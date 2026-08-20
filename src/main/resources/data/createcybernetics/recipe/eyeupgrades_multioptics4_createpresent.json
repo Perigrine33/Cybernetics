@@ -9,7 +9,7 @@
   "accept_mirrored": true,
 
   "key": {
-    "L": {
+    "R": {
       "item": "minecraft:redstone_block"
     },
     "E": {
