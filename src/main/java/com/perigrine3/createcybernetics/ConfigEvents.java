@@ -59,12 +59,7 @@ public final class ConfigEvents {
 
     private static void bakeSpawnSettings() {
         ConfigValues.CYBERZOMBIE_SPAWN_WEIGHT = Config.CYBERZOMBIE_SPAWN_WEIGHT.get();
-        ConfigValues.CYBERZOMBIE_MIN_GROUP = Config.CYBERZOMBIE_MIN_GROUP.get();
-        ConfigValues.CYBERZOMBIE_MAX_GROUP = Math.max(ConfigValues.CYBERZOMBIE_MIN_GROUP, Config.CYBERZOMBIE_MAX_GROUP.get());
-
         ConfigValues.CYBERSKELETON_SPAWN_WEIGHT = Config.CYBERSKELETON_SPAWN_WEIGHT.get();
-        ConfigValues.CYBERSKELETON_MIN_GROUP = Config.CYBERSKELETON_MIN_GROUP.get();
-        ConfigValues.CYBERSKELETON_MAX_GROUP = Math.max(ConfigValues.CYBERSKELETON_MIN_GROUP, Config.CYBERSKELETON_MAX_GROUP.get());
 
         ConfigValues.HOGBOY_SPAWN_WEIGHT = Config.HOGBOY_SPAWN_WEIGHT.get();
         ConfigValues.HOGBOY_MIN_GROUP = Config.HOGBOY_MIN_GROUP.get();

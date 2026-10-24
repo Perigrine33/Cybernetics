@@ -440,12 +440,12 @@ public class CyberwareAttributeHelper {
                 ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "brownshard_crops_multiplier"),
                 1, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 
-        registerModifier("grayshard_speed", new AttributeModifierData(cropMultiplierAttribute,
+        registerModifier("grayshard_speed", new AttributeModifierData(elytraSpeedAttribute,
                 ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "grayshard_speed_boost"),
-                5, AttributeModifier.Operation.ADD_VALUE));
-        registerModifier("grayshard_handling", new AttributeModifierData(cropMultiplierAttribute,
+                3, AttributeModifier.Operation.ADD_VALUE));
+        registerModifier("grayshard_handling", new AttributeModifierData(elytraHandlingAttribute,
                 ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "grayshard_handling_boost"),
-                5, AttributeModifier.Operation.ADD_VALUE));
+                3, AttributeModifier.Operation.ADD_VALUE));
 
         registerModifier("blackshard_crouch", new AttributeModifierData(crouchSpeedAttribute,
                 ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "blackshard_crouch_speed"),

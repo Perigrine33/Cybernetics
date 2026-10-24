@@ -232,7 +232,6 @@ public class ModItemTagProvider extends ItemTagsProvider {
 //MACROPROGRAMS
         tag(ModTags.Items.MACROPROGRAMS)
                 .add(ModItems.MACROPROGRAM_DATA_MINER.get())
-                .add(ModItems.MACROPROGRAM_SECURE_SHELL.get())
                 .add(ModItems.MACROPROGRAM_BIT_CRUSHER.get())
                 .add(ModItems.MACROPROGRAM_STACK_OVERFLOW.get())
                 .add(ModItems.MACROPROGRAM_ICEBREAKER.get())
@@ -369,7 +368,6 @@ public class ModItemTagProvider extends ItemTagsProvider {
                 .add(ModItems.ORGANSUPGRADES_MAGICCATALYST.get())
                 .add(ModItems.ORGANSUPGRADES_METABOLIC.get())
                 .add(ModItems.ORGANSUPGRADES_DENSEBATTERY.get())
-                .add(ModItems.ORGANSUPGRADES_CREATIVEBATTERY.get())
                 .add(ModItems.ORGANSUPGRADES_HEATENGINE.get())
                 .add(ModItems.ORGANSUPGRADES_OREGRINDER.get())
                 .add(ModItems.SKINUPGRADES_ARTERIALTURBINE.get())

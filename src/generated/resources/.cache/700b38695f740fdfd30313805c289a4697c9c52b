@@ -1,4 +1,4 @@
-// 1.21.1	2026-08-21T12:27:27.1657481	Item Models: createcybernetics
+// 1.21.1	2026-10-05T17:13:10.2785684	Item Models: createcybernetics
 ae78f051d9328e5a204530b7fc2e3d88362b4e68 assets/createcybernetics/models/item/armupgrades_armcannon.json
 37f82cc0ca47be7b60c54ef6d3b7059b9b671846 assets/createcybernetics/models/item/armupgrades_claws.json
 43386cbc8a036270c3eb218724a7a5cdf12b5fbf assets/createcybernetics/models/item/armupgrades_crafthands.json
@@ -179,7 +179,6 @@ d278af4950db9b33bbd1362fc8c8762f6cec3fe6 assets/createcybernetics/models/item/ma
 03765c399b03c97d1047ec83bd885ed1187b5155 assets/createcybernetics/models/item/macroprogram_packet_sniffer.json
 3452d511054a8f70232843fd9bf43b1af7e0b108 assets/createcybernetics/models/item/macroprogram_ping.json
 c725d767d4b5a67f0832b876bfb30bc7838e9322 assets/createcybernetics/models/item/macroprogram_recovery.json
-955afd9281183c1045cd9c462b258b573fe875c4 assets/createcybernetics/models/item/macroprogram_secure_shell.json
 82b7ed9f7031aa032f0acf4e4ea7ed2790b2256f assets/createcybernetics/models/item/macroprogram_stack_overflow.json
 0adc958bb7506c7a9c1f0d78032b90dcb63314b6 assets/createcybernetics/models/item/macroprogram_vpn_shroud.json
 37a6ccbb6523c48a6fe63eb4fc4de4667e0e7728 assets/createcybernetics/models/item/materialized_banhammer.json

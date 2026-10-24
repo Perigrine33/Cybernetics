@@ -132,26 +132,6 @@ public final class MacroprogramExecutionManager {
         }
     }
 
-    public static void recordSecureShellBlockBreak(ServerPlayer player) {
-        String id = MacroprogramRegistry.SECURE_SHELL.id();
-
-        if (!isActive(player, id)) return;
-        if (!player.getMainHandItem().is(ModItems.MATERIALIZED_SECURE_SHELL.get())) return;
-
-        CompoundTag active = getActiveProgram(player, id);
-        if (active == null) return;
-
-        int blocks = active.getInt(NBT_SECURE_SHELL_BLOCKS) + 1;
-        active.putInt(NBT_SECURE_SHELL_BLOCKS, blocks);
-
-        if (blocks >= SECURE_SHELL_MAX_BLOCKS) {
-            endProgram(player, id, true);
-            return;
-        }
-
-        sync(player);
-    }
-
     public static void endProgram(ServerPlayer player, String id, boolean startCooldown) {
         if (id == null || id.isBlank()) return;
 
@@ -234,14 +214,6 @@ public final class MacroprogramExecutionManager {
         return remaining <= 0L ? 0 : (int) Math.min(Integer.MAX_VALUE, remaining);
     }
 
-    public static int getSecureShellBlocksRemaining(ServerPlayer player) {
-        CompoundTag active = getActiveProgram(player, MacroprogramRegistry.SECURE_SHELL.id());
-
-        if (active == null) return 0;
-
-        return Math.max(0, SECURE_SHELL_MAX_BLOCKS - active.getInt(NBT_SECURE_SHELL_BLOCKS));
-    }
-
     public static void sync(ServerPlayer player) {
         List<MacroprogramRuntimeSyncPayload.Entry> entries = new ArrayList<>();
 
@@ -253,10 +225,6 @@ public final class MacroprogramExecutionManager {
             if (!active && cooldownRemaining <= 0) continue;
 
             int usesRemaining = -1;
-
-            if (active && definition == MacroprogramRegistry.SECURE_SHELL) {
-                usesRemaining = getSecureShellBlocksRemaining(player);
-            }
 
             entries.add(new MacroprogramRuntimeSyncPayload.Entry(definition.id(), activeRemaining, cooldownRemaining, usesRemaining));
         }
@@ -397,10 +365,6 @@ public final class MacroprogramExecutionManager {
             active.putInt(NBT_MATERIALIZED_SLOT, materializedSlot);
         }
 
-        if (definition == MacroprogramRegistry.SECURE_SHELL) {
-            active.putInt(NBT_SECURE_SHELL_BLOCKS, 0);
-        }
-
         activePrograms.put(definition.id(), active);
     }
 
@@ -469,9 +433,6 @@ public final class MacroprogramExecutionManager {
             return MacroprogramRegistry.DATA_MINER.id();
         }
 
-        if (stack.is(ModItems.MATERIALIZED_SECURE_SHELL.get())) {
-            return MacroprogramRegistry.SECURE_SHELL.id();
-        }
 
         if (stack.is(ModItems.MATERIALIZED_BIT_CRUSHER.get())) {
             return MacroprogramRegistry.BIT_CRUSHER.id();
@@ -521,10 +482,6 @@ public final class MacroprogramExecutionManager {
     private static MaterializedProgram getMaterializedProgram(String id) {
         if (MacroprogramRegistry.DATA_MINER.id().equals(id)) {
             return new MaterializedProgram(ModItems.MATERIALIZED_DATA_MINER.get(), MaterializationType.HELD);
-        }
-
-        if (MacroprogramRegistry.SECURE_SHELL.id().equals(id)) {
-            return new MaterializedProgram(ModItems.MATERIALIZED_SECURE_SHELL.get(), MaterializationType.HELD);
         }
 
         if (MacroprogramRegistry.BIT_CRUSHER.id().equals(id)) {

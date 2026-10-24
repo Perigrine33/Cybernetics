@@ -100,22 +100,16 @@ public final class ConfigValues {
 
 
     /**
-     * Relative replacement weight for Cyberzombies against a vanilla Zombie
-     * baseline weight of 100.
+     * Relative replacement weight for naturally spawned vanilla Zombies against
+     * a fixed vanilla baseline weight of 100.
      */
     public static int CYBERZOMBIE_SPAWN_WEIGHT = 10;
 
-    public static int CYBERZOMBIE_MIN_GROUP = 1;
-    public static int CYBERZOMBIE_MAX_GROUP = 3;
-
     /**
-     * Relative replacement weight for Cyberskeletons against a vanilla Skeleton
-     * baseline weight of 100.
+     * Relative replacement weight for naturally spawned vanilla Skeletons against
+     * a fixed vanilla baseline weight of 100.
      */
     public static int CYBERSKELETON_SPAWN_WEIGHT = 10;
-
-    public static int CYBERSKELETON_MIN_GROUP = 1;
-    public static int CYBERSKELETON_MAX_GROUP = 3;
 
     /** Natural biome spawn-pool weight for Hogboys. */
     public static int HOGBOY_SPAWN_WEIGHT = 5;

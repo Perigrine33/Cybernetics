@@ -141,69 +141,66 @@ public final class Config {
 
 
     public static final ModConfigSpec.IntValue CYBERZOMBIE_SPAWN_WEIGHT = BUILDER
-            .comment("Cyberzombie relative replacement weight against vanilla Zombies.")
-            .comment("Vanilla Zombies use an effective baseline weight of 100.")
-            .comment("A value of 10 gives Cyberzombies 10 shares against 100 vanilla Zombie shares.")
+            .comment("Cyberzombie replacement weight against naturally spawned vanilla Zombies.")
+            .comment("Vanilla Zombies use a fixed baseline weight of 100.")
+            .comment("Replacement chance is cyberzombieSpawn / (100 + cyberzombieSpawn).")
+            .comment("Examples: 10 = 9.09%, 100 = 50%, 300 = 75%.")
             .comment("Set to 0 to disable Zombie replacement.")
+            .comment("This value is checked when each eligible Zombie spawns and may be changed by config reload without rebuilding biome spawn lists.")
             .defineInRange("cyberzombieSpawn", 10, 0, 1000);
 
-    public static final ModConfigSpec.IntValue CYBERZOMBIE_MIN_GROUP = BUILDER
-            .comment("Cyberzombie minimum spawn group size.")
-            .defineInRange("cyberzombieMin", 1, 1, 100);
-
-    public static final ModConfigSpec.IntValue CYBERZOMBIE_MAX_GROUP = BUILDER
-            .comment("Cyberzombie maximum spawn group size.")
-            .defineInRange("cyberzombieMax", 3, 1, 100);
-
     public static final ModConfigSpec.IntValue CYBERSKELETON_SPAWN_WEIGHT = BUILDER
-            .comment("Cyberskeleton relative replacement weight against vanilla Skeletons.")
-            .comment("Vanilla Skeletons use an effective baseline weight of 100.")
-            .comment("A value of 10 gives Cyberskeletons 10 shares against 100 vanilla Skeleton shares.")
+            .comment("Cyberskeleton replacement weight against naturally spawned vanilla Skeletons.")
+            .comment("Vanilla Skeletons use a fixed baseline weight of 100.")
+            .comment("Replacement chance is cyberskeletonSpawn / (100 + cyberskeletonSpawn).")
+            .comment("Examples: 10 = 9.09%, 100 = 50%, 300 = 75%.")
             .comment("Set to 0 to disable Skeleton replacement.")
+            .comment("This value is checked when each eligible Skeleton spawns and may be changed by config reload without rebuilding biome spawn lists.")
             .defineInRange("cyberskeletonSpawn", 10, 0, 1000);
 
-    public static final ModConfigSpec.IntValue CYBERSKELETON_MIN_GROUP = BUILDER
-            .comment("Cyberskeleton minimum spawn group size.")
-            .defineInRange("cyberskeletonMin", 1, 1, 100);
-
-    public static final ModConfigSpec.IntValue CYBERSKELETON_MAX_GROUP = BUILDER
-            .comment("Cyberskeleton maximum spawn group size.")
-            .defineInRange("cyberskeletonMax", 3, 1, 100);
-
     public static final ModConfigSpec.IntValue HOGBOY_SPAWN_WEIGHT = BUILDER
-            .comment("Hogboy spawn weight. Set to 0 to disable natural spawning.")
+            .comment("Hogboy natural biome spawn-pool weight. Set to 0 to disable natural spawning.")
+            .comment("This value is baked into biome spawn settings and requires the server/world to be restarted to take effect.")
             .defineInRange("hogboySpawn", 5, 0, 1000);
 
     public static final ModConfigSpec.IntValue HOGBOY_MIN_GROUP = BUILDER
-            .comment("Hogboy minimum spawn group size.")
+            .comment("Hogboy minimum natural spawn group size.")
+            .comment("This value is baked into biome spawn settings and requires the server/world to be restarted to take effect.")
             .defineInRange("hogboyMin", 1, 1, 100);
 
     public static final ModConfigSpec.IntValue HOGBOY_MAX_GROUP = BUILDER
-            .comment("Hogboy maximum spawn group size.")
+            .comment("Hogboy maximum natural spawn group size.")
+            .comment("This value is baked into biome spawn settings and requires the server/world to be restarted to take effect.")
             .defineInRange("hogboyMax", 4, 1, 100);
 
     public static final ModConfigSpec.IntValue PUNKLIN_SPAWN_WEIGHT = BUILDER
-            .comment("Punklin spawn weight. Set to 0 to disable natural spawning.")
+            .comment("Punklin natural biome spawn-pool weight. Set to 0 to disable natural spawning.")
+            .comment("This value is baked into biome spawn settings and requires the server/world to be restarted to take effect.")
             .defineInRange("punklinSpawn", 10, 0, 1000);
 
     public static final ModConfigSpec.IntValue PUNKLIN_MIN_GROUP = BUILDER
-            .comment("Punklin minimum spawn group size.")
+            .comment("Punklin minimum natural spawn group size.")
+            .comment("This value is baked into biome spawn settings and requires the server/world to be restarted to take effect.")
             .defineInRange("punklinMin", 3, 1, 100);
 
     public static final ModConfigSpec.IntValue PUNKLIN_MAX_GROUP = BUILDER
-            .comment("Punklin maximum spawn group size.")
+            .comment("Punklin maximum natural spawn group size.")
+            .comment("This value is baked into biome spawn settings and requires the server/world to be restarted to take effect.")
             .defineInRange("punklinMax", 7, 1, 100);
 
     public static final ModConfigSpec.IntValue PIGSTROM_SPAWN_WEIGHT = BUILDER
-            .comment("Pigstrom spawn weight. Set to 0 to disable natural spawning.")
+            .comment("Pigstrom natural biome spawn-pool weight. Set to 0 to disable natural spawning.")
+            .comment("This value is baked into biome spawn settings and requires the server/world to be restarted to take effect.")
             .defineInRange("pigstromSpawn", 14, 0, 1000);
 
     public static final ModConfigSpec.IntValue PIGSTROM_MIN_GROUP = BUILDER
-            .comment("Pigstrom minimum spawn group size.")
+            .comment("Pigstrom minimum natural spawn group size.")
+            .comment("This value is baked into biome spawn settings and requires the server/world to be restarted to take effect.")
             .defineInRange("pigstromMin", 4, 1, 100);
 
     public static final ModConfigSpec.IntValue PIGSTROM_MAX_GROUP = BUILDER
-            .comment("Pigstrom maximum spawn group size.")
+            .comment("Pigstrom maximum natural spawn group size.")
+            .comment("This value is baked into biome spawn settings and requires the server/world to be restarted to take effect.")
             .defineInRange("pigstromMax", 8, 1, 100);
 
 

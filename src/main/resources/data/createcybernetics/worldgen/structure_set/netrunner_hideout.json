@@ -1,0 +1,18 @@
+{
+  "structures": [
+    {
+      "structure": "createcybernetics:netrunner_hideout_underground",
+      "weight": 3
+    },
+    {
+      "structure": "createcybernetics:netrunner_hideout_surface",
+      "weight": 1
+    }
+  ],
+  "placement": {
+    "type": "minecraft:random_spread",
+    "salt": 748311905,
+    "spacing": 112,
+    "separation": 32
+  }
+}

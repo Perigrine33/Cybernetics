@@ -3,7 +3,6 @@ package com.perigrine3.createcybernetics.cyberspace;
 import com.perigrine3.createcybernetics.api.CyberwareSlot;
 import com.perigrine3.createcybernetics.api.InstalledCyberware;
 import com.perigrine3.createcybernetics.block.ModBlocks;
-import com.perigrine3.createcybernetics.block.ServerTowerBlock;
 import com.perigrine3.createcybernetics.block.entity.ServerTowerBlockEntity;
 import com.perigrine3.createcybernetics.common.capabilities.ModAttachments;
 import com.perigrine3.createcybernetics.common.capabilities.PlayerCyberwareData;
@@ -17,7 +16,6 @@ import com.perigrine3.createcybernetics.item.ModItems;
 import com.perigrine3.createcybernetics.network.payload.CyberspaceProgressPayload;
 import com.perigrine3.createcybernetics.world.dimension.ModDimensions;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
@@ -103,6 +101,12 @@ public final class CyberspaceTravelManager {
 
         if (!(player.level().getBlockEntity(towerPos) instanceof ServerTowerBlockEntity tower)) {
             interruptJackIn(player);
+            return;
+        }
+
+        if (!tower.hasProvisionedArchitecture()) {
+            interruptJackIn(player);
+            player.displayClientMessage(Component.translatable("message.createcybernetics.cyberspace.unprovisioned_server"), true);
             return;
         }
 
@@ -196,6 +200,11 @@ public final class CyberspaceTravelManager {
             return false;
         }
 
+        if (!tower.hasProvisionedArchitecture()) {
+            player.displayClientMessage(Component.translatable("message.createcybernetics.cyberspace.unprovisioned_server"), true);
+            return false;
+        }
+
         if (!tower.isOperational()) {
             player.displayClientMessage(Component.translatable("message.createcybernetics.cyberspace.missing_power"), true);
             return false;
@@ -212,7 +221,7 @@ public final class CyberspaceTravelManager {
         BlockPos towerPos = tower.getBlockPos();
         UUID towerId = tower.getServerId();
 
-        CyberspaceDungeonSavedData.DungeonRecord dungeon = CyberspaceDungeonManager.getOrCreateDungeon(player.server, towerId);
+        CyberspaceDungeonSavedData.DungeonRecord dungeon = CyberspaceDungeonManager.getOrGenerateProvisionedDungeon(player.server, towerId);
 
         if (dungeon == null) {
             player.displayClientMessage(Component.translatable("message.createcybernetics.cyberspace.unavailable"), true);

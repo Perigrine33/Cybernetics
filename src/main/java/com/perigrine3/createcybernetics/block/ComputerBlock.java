@@ -3,6 +3,7 @@ package com.perigrine3.createcybernetics.block;
 import com.mojang.serialization.MapCodec;
 import com.perigrine3.createcybernetics.block.entity.ComputerBlockEntity;
 import com.perigrine3.createcybernetics.block.entity.ModBlockEntities;
+import com.perigrine3.createcybernetics.block.entity.ServerTowerBlockEntity;
 import com.perigrine3.createcybernetics.common.energy.ConditionalBlockPower;
 import com.perigrine3.createcybernetics.common.multiblock.ServerTowerMultiblock;
 import net.minecraft.core.BlockPos;
@@ -68,7 +69,7 @@ public class ComputerBlock extends BaseEntityBlock {
                 facing = towerState.getValue(ServerTowerBlock.FACING);
             }
 
-            if (level.getBlockEntity(serverTowerPos) instanceof com.perigrine3.createcybernetics.block.entity.ServerTowerBlockEntity tower) {
+            if (level.getBlockEntity(serverTowerPos) instanceof ServerTowerBlockEntity tower) {
                 powered = tower.isOperational();
             }
         } else if (!ConditionalBlockPower.shouldUseEnergyInsteadOfRedstone()) {
@@ -102,13 +103,16 @@ public class ComputerBlock extends BaseEntityBlock {
         }
     }
 
-    private static void updateConnectionState(Level level, BlockPos pos) {
+    public static void updateConnectionState(Level level, BlockPos pos) {
         BlockState currentState = level.getBlockState(pos);
 
+        if (!currentState.is(ModBlocks.COMPUTER.get())) return;
         if (!currentState.hasProperty(CONNECTED)) return;
+        if (!currentState.hasProperty(POWERED)) return;
 
         BlockPos serverTowerPos = ServerTowerMultiblock.getComputerControllerPos(level, pos);
         boolean connected = serverTowerPos != null || hasComputerTowerBelow(level, pos);
+        boolean powered = currentState.getValue(POWERED);
 
         BlockState updatedState = currentState;
 
@@ -119,12 +123,28 @@ public class ComputerBlock extends BaseEntityBlock {
         if (serverTowerPos != null) {
             BlockState towerState = level.getBlockState(serverTowerPos);
 
-            if (towerState.is(ModBlocks.SERVER_TOWER.get()) && updatedState.getValue(FACING) != towerState.getValue(ServerTowerBlock.FACING)) {
-                updatedState = updatedState.setValue(FACING, towerState.getValue(ServerTowerBlock.FACING));
+            if (towerState.is(ModBlocks.SERVER_TOWER.get())) {
+                Direction towerFacing = towerState.getValue(ServerTowerBlock.FACING);
+
+                if (updatedState.getValue(FACING) != towerFacing) {
+                    updatedState = updatedState.setValue(FACING, towerFacing);
+                }
             }
+
+            if (level.getBlockEntity(serverTowerPos) instanceof ServerTowerBlockEntity tower) {
+                powered = tower.isOperational();
+            } else {
+                powered = false;
+            }
+        } else if (!ConditionalBlockPower.shouldUseEnergyInsteadOfRedstone()) {
+            powered = ConditionalBlockPower.hasRedstonePower(level, pos);
         }
 
-        if (updatedState != currentState) {
+        if (updatedState.getValue(POWERED) != powered) {
+            updatedState = updatedState.setValue(POWERED, powered);
+        }
+
+        if (!updatedState.equals(currentState)) {
             level.setBlock(pos, updatedState, Block.UPDATE_ALL);
         }
     }

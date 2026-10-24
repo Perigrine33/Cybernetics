@@ -1656,7 +1656,15 @@ public class PlayerCyberwareData implements ICyberwareData {
         }
 
         if (item instanceof SpinalInjectorItem) {
-            ejectSpinalInjectorInventory(player);
+            if (player instanceof ServerPlayer serverPlayer) {
+                SpinalInjectorItem.dropAndClearInstalledStack(
+                        serverPlayer,
+                        serverPlayer.level().registryAccess(),
+                        removedCyberware
+                );
+            }
+
+            clearSpinalInjectorInventory();
             return;
         }
 

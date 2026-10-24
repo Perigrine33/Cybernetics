@@ -1,5 +1,6 @@
 package com.perigrine3.createcybernetics.common.multiblock;
 
+import com.perigrine3.createcybernetics.block.ComputerBlock;
 import com.perigrine3.createcybernetics.block.ModBlocks;
 import com.perigrine3.createcybernetics.block.ServerTowerBlock;
 import com.perigrine3.createcybernetics.block.ServerTowerPartBlock;
@@ -7,6 +8,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -117,6 +119,47 @@ public final class ServerTowerMultiblock {
         }
 
         return positions;
+    }
+
+    public static void ensureRuntimeState(Level level, BlockPos anchor, Direction facing) {
+        if (level == null || level.isClientSide) return;
+
+        BlockState controllerState = level.getBlockState(anchor);
+
+        if (!controllerState.is(ModBlocks.SERVER_TOWER.get())) return;
+
+        if (controllerState.getValue(ServerTowerBlock.FACING) != facing) {
+            controllerState = controllerState.setValue(ServerTowerBlock.FACING, facing);
+            level.setBlock(anchor, controllerState, Block.UPDATE_ALL);
+        }
+
+        for (int i = 0; i < MACHINE_CASINGS.length; i++) {
+            BlockPos partPos = offset(anchor, facing, MACHINE_CASINGS[i]);
+            BlockState partState = level.getBlockState(partPos);
+
+            if (!partState.is(ModBlocks.SERVER_TOWER_PART.get())) continue;
+
+            BlockState expectedState = ModBlocks.SERVER_TOWER_PART.get().defaultBlockState()
+                    .setValue(ServerTowerPartBlock.FACING, facing)
+                    .setValue(ServerTowerPartBlock.PART_INDEX, i);
+
+            if (partState != expectedState) {
+                level.setBlock(partPos, expectedState, Block.UPDATE_ALL);
+            }
+        }
+
+        BlockPos computerPos = getFrontExtensionPos(anchor, facing).above();
+        BlockState computerState = level.getBlockState(computerPos);
+
+        if (computerState.is(ModBlocks.COMPUTER.get())) {
+            ComputerBlock.updateConnectionState(level, computerPos);
+            level.updateNeighborsAt(computerPos, computerState.getBlock());
+        }
+
+        for (BlockPos occupiedPos : getOccupiedPositions(anchor, facing)) {
+            BlockState occupiedState = level.getBlockState(occupiedPos);
+            level.updateNeighborsAt(occupiedPos, occupiedState.getBlock());
+        }
     }
 
     public static void breakPart(Level level, BlockPos brokenPartPos, Direction facing, int partIndex) {

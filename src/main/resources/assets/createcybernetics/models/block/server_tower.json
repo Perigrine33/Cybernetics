@@ -6,7 +6,7 @@
 	"render_type": "cutout",
 	"textures": {
 		"0": "createcybernetics:block/server_tower",
-		"particle": "createcybernetics:block/server_tower"
+		"particle": "createcybernetics:block/blankmachine"
 	},
 	"elements": [
 		{

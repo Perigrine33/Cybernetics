@@ -6,6 +6,7 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.material.PushReaction;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -106,10 +107,10 @@ public class ModBlocks {
 
     public static final DeferredBlock<Block> SERVER_TOWER = registerBlock("server_tower",
             () -> new ServerTowerBlock(BlockBehaviour.Properties.of().strength(6, 8)
-                    .noOcclusion().sound(SoundType.METAL)), false);
+                    .noOcclusion().pushReaction(PushReaction.BLOCK).sound(SoundType.METAL)), false);
     public static final DeferredBlock<Block> SERVER_TOWER_PART = registerBlock("server_tower_part",
             () -> new ServerTowerPartBlock(BlockBehaviour.Properties.of().strength(6, 8)
-                    .noLootTable().noOcclusion().sound(SoundType.METAL)), false);
+                    .noLootTable().noOcclusion().pushReaction(PushReaction.BLOCK).sound(SoundType.METAL)), false);
 //CYBERSPACE BLOCKS
     public static final DeferredBlock<Block> DIGITAL_ARCHITECTURE = registerBlock("digital_architecture",
             () -> new DigitalArchitectureBlock(BlockBehaviour.Properties.of()

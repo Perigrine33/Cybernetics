@@ -471,7 +471,6 @@ public class ModItemModelProvider extends ItemModelProvider {
 // MACROPROGRAMS
         {
             basicItem(ModItems.MACROPROGRAM_DATA_MINER.get());
-            basicItem(ModItems.MACROPROGRAM_SECURE_SHELL.get());
             basicItem(ModItems.MACROPROGRAM_BIT_CRUSHER.get());
             basicItem(ModItems.MACROPROGRAM_STACK_OVERFLOW.get());
             basicItem(ModItems.MACROPROGRAM_ICEBREAKER.get());

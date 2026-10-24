@@ -31,15 +31,12 @@ public record ConfigurableEntitySpawnBiomeModifier(
         if (spawn == null) return;
         if (spawn.weight <= 0) return;
 
-        builder.getMobSpawnSettings().addSpawn(
-                spawn.entity.getCategory(),
-                new MobSpawnSettings.SpawnerData(
-                        spawn.entity,
-                        spawn.weight,
-                        spawn.minGroup,
-                        spawn.maxGroup
-                )
-        );
+        builder.getMobSpawnSettings().addSpawn(spawn.entity.getCategory(), new MobSpawnSettings.SpawnerData(
+                spawn.entity,
+                spawn.weight,
+                spawn.minGroup,
+                spawn.maxGroup
+        ));
     }
 
     @Override
@@ -49,18 +46,6 @@ public record ConfigurableEntitySpawnBiomeModifier(
 
     private static SpawnConfig getSpawnConfig(String spawnId) {
         return switch (spawnId) {
-            case "cyberzombie" -> new SpawnConfig(
-                    ModEntities.CYBERZOMBIE.get(),
-                    ConfigValues.CYBERZOMBIE_SPAWN_WEIGHT,
-                    ConfigValues.CYBERZOMBIE_MIN_GROUP,
-                    ConfigValues.CYBERZOMBIE_MAX_GROUP
-            );
-            case "cyberskeleton" -> new SpawnConfig(
-                    ModEntities.CYBERSKELETON.get(),
-                    ConfigValues.CYBERSKELETON_SPAWN_WEIGHT,
-                    ConfigValues.CYBERSKELETON_MIN_GROUP,
-                    ConfigValues.CYBERSKELETON_MAX_GROUP
-            );
             case "hogboy" -> new SpawnConfig(
                     ModEntities.HOGBOY.get(),
                     ConfigValues.HOGBOY_SPAWN_WEIGHT,

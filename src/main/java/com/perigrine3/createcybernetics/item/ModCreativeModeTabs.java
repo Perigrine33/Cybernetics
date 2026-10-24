@@ -569,7 +569,6 @@ public class ModCreativeModeTabs {
 
 //MACROPROGRAMS
                         output.accept(ModItems.MACROPROGRAM_DATA_MINER);
-                        output.accept(ModItems.MACROPROGRAM_SECURE_SHELL);
 
                         output.accept(ModItems.MACROPROGRAM_BIT_CRUSHER);
                         output.accept(ModItems.MACROPROGRAM_STACK_OVERFLOW);

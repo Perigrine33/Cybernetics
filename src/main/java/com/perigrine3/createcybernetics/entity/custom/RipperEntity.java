@@ -308,6 +308,11 @@ public class RipperEntity extends AbstractIllager {
         return rightPos;
     }
 
+    @Override
+    public boolean isPreventingPlayerRest(Player player) {
+        return false;
+    }
+
     private boolean isApproachSideUsable(BlockPos pos) {
         BlockState state = level().getBlockState(pos);
         return state.isAir() || state.canBeReplaced();

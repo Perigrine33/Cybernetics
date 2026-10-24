@@ -1,5 +1,6 @@
 package com.perigrine3.createcybernetics.block.entity;
 
+import com.perigrine3.createcybernetics.block.ServerTowerBlock;
 import com.perigrine3.createcybernetics.common.energy.ConditionalBlockPower;
 import com.perigrine3.createcybernetics.common.energy.SyncingEnergyStorage;
 import com.perigrine3.createcybernetics.common.multiblock.ServerTowerMultiblock;
@@ -21,6 +22,7 @@ import java.util.UUID;
 public class ServerTowerBlockEntity extends net.minecraft.world.level.block.entity.BlockEntity {
     private static final String NBT_SERVER_ID = "ServerId";
     private static final String NBT_ENERGY = "Energy";
+    private static final String NBT_PROVISIONED = "Provisioned";
 
     public static final int ENERGY_CAPACITY = 5_000_000;
     public static final int MAX_RECEIVE = 1_000_000;
@@ -65,15 +67,44 @@ public class ServerTowerBlockEntity extends net.minecraft.world.level.block.enti
     private long energyInputTick = Long.MIN_VALUE;
     private int energyReceivedThisTick;
     private boolean powered;
-    private boolean serverBindingResolved;
+
+    private boolean provisioned;
+    private boolean provisioningChecked;
+    private boolean provisioningValid;
+
+    private boolean runtimeStateInitialized;
 
     public ServerTowerBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.SERVER_TOWER.get(), pos, state);
     }
 
     public UUID getServerId() {
-        ensureServerBinding();
         return serverId;
+    }
+
+    public boolean isProvisioned() {
+        return provisioned;
+    }
+
+    public boolean hasProvisionedArchitecture() {
+        ensureProvisioningRegistration();
+        return provisioned && provisioningValid;
+    }
+
+    public boolean provisionFromWorldgen() {
+        if (provisioned && provisioningValid) {
+            return true;
+        }
+
+        serverId = UUID.randomUUID();
+        provisioned = true;
+        provisioningChecked = false;
+        provisioningValid = false;
+
+        ensureProvisioningRegistration();
+        setChanged();
+
+        return provisioningValid;
     }
 
     public IEnergyStorage getEnergyStorage() {
@@ -92,35 +123,47 @@ public class ServerTowerBlockEntity extends net.minecraft.world.level.block.enti
         return powered;
     }
 
-    @Override
-    public void onLoad() {
-        super.onLoad();
+    private void ensureRuntimeState() {
+        if (runtimeStateInitialized) return;
+        if (level == null || level.isClientSide) return;
 
-        if (level instanceof ServerLevel) {
-            ensureServerBinding();
-        }
+        BlockState state = level.getBlockState(worldPosition);
+
+        if (!state.is(getBlockState().getBlock())) return;
+        if (!state.hasProperty(ServerTowerBlock.FACING)) return;
+
+        ServerTowerMultiblock.ensureRuntimeState(level, worldPosition, state.getValue(ServerTowerBlock.FACING));
+        runtimeStateInitialized = true;
     }
 
-    private void ensureServerBinding() {
-        if (serverBindingResolved) return;
-        if (!(level instanceof ServerLevel serverLevel)) return;
+    private void ensureProvisioningRegistration() {
+        if (provisioningChecked) return;
+
+        if (!provisioned) {
+            provisioningChecked = true;
+            provisioningValid = false;
+            return;
+        }
+
+        if (!(level instanceof ServerLevel serverLevel)) {
+            return;
+        }
 
         CyberspaceDungeonSavedData data = CyberspaceDungeonSavedData.get(serverLevel.getServer());
 
-        UUID resolvedServerId = data.getOrCreateServerBinding(serverLevel.dimension().location(), worldPosition, serverId);
+        provisioningValid = data.registerProvisionedServer(serverId, serverLevel.dimension().location(), worldPosition);
+        provisioningChecked = true;
 
-        if (!resolvedServerId.equals(serverId)) {
-            serverId = resolvedServerId;
+        if (provisioningValid) {
             setChanged();
         }
-
-        serverBindingResolved = true;
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, ServerTowerBlockEntity blockEntity) {
         if (level.isClientSide) return;
 
-        blockEntity.ensureServerBinding();
+        blockEntity.ensureRuntimeState();
+        blockEntity.ensureProvisioningRegistration();
 
         if (!ConditionalBlockPower.shouldUseEnergyInsteadOfRedstone()) {
             blockEntity.powered = true;
@@ -171,7 +214,7 @@ public class ServerTowerBlockEntity extends net.minecraft.world.level.block.enti
 
         if (remainingInput <= 0) return;
 
-        Set<BlockPos> towerPositions = new HashSet<>(ServerTowerMultiblock.getOccupiedPositions(worldPosition, getBlockState().getValue(com.perigrine3.createcybernetics.block.ServerTowerBlock.FACING)));
+        Set<BlockPos> towerPositions = new HashSet<>(ServerTowerMultiblock.getOccupiedPositions(worldPosition, getBlockState().getValue(ServerTowerBlock.FACING)));
         Set<BlockPos> checkedNeighbors = new HashSet<>();
 
         for (BlockPos towerPos : towerPositions) {
@@ -230,6 +273,7 @@ public class ServerTowerBlockEntity extends net.minecraft.world.level.block.enti
 
         tag.putUUID(NBT_SERVER_ID, serverId);
         tag.putInt(NBT_ENERGY, energyStorage.getEnergyStored());
+        tag.putBoolean(NBT_PROVISIONED, provisioned);
     }
 
     @Override
@@ -242,7 +286,10 @@ public class ServerTowerBlockEntity extends net.minecraft.world.level.block.enti
             serverId = UUID.randomUUID();
         }
 
-        serverBindingResolved = false;
+        provisioned = tag.getBoolean(NBT_PROVISIONED);
+        provisioningChecked = false;
+        provisioningValid = false;
+        runtimeStateInitialized = false;
 
         if (tag.contains(NBT_ENERGY)) {
             energyStorage.setEnergyStoredSilently(tag.getInt(NBT_ENERGY));

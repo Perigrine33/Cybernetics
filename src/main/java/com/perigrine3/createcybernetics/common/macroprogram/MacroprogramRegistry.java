@@ -8,7 +8,6 @@ public final class MacroprogramRegistry {
     private static final Map<String, MacroprogramDefinition> DEFINITIONS = new LinkedHashMap<>();
 
     public static final MacroprogramDefinition DATA_MINER = register("data_miner", MacroprogramCategory.UTILITY, 0, 0, 4);
-    public static final MacroprogramDefinition SECURE_SHELL = register("secure_shell", MacroprogramCategory.UTILITY, 0, 3600, 8);
 
     public static final MacroprogramDefinition BIT_CRUSHER = register("bit_crusher", MacroprogramCategory.COMBAT, 0, 0, 4);
     public static final MacroprogramDefinition STACK_OVERFLOW = register("stack_overflow", MacroprogramCategory.COMBAT, 0, 0, 8);

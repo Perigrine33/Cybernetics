@@ -1056,7 +1056,6 @@ public class ModItems {
 
     //MACROPROGRAMS
     public static final DeferredItem<Item> MACROPROGRAM_DATA_MINER = registerMacroprogram("macroprogram_data_miner", MacroprogramRegistry.DATA_MINER);
-    public static final DeferredItem<Item> MACROPROGRAM_SECURE_SHELL = registerMacroprogram("macroprogram_secure_shell", MacroprogramRegistry.SECURE_SHELL);
     public static final DeferredItem<Item> MACROPROGRAM_BIT_CRUSHER = registerMacroprogram("macroprogram_bit_crusher", MacroprogramRegistry.BIT_CRUSHER);
     public static final DeferredItem<Item> MACROPROGRAM_STACK_OVERFLOW = registerMacroprogram("macroprogram_stack_overflow", MacroprogramRegistry.STACK_OVERFLOW);
     public static final DeferredItem<Item> MACROPROGRAM_ICEBREAKER = registerMacroprogram("macroprogram_icebreaker", MacroprogramRegistry.ICEBREAKER);
@@ -1075,8 +1074,6 @@ public class ModItems {
     //MATERIALIZED MACROPROGRAMS
     public static final DeferredItem<Item> MATERIALIZED_DATA_MINER = ITEMS.register("materialized_data_miner",
             () -> new MaterializedDataMinerItem(new Item.Properties().stacksTo(1)));
-    public static final DeferredItem<Item> MATERIALIZED_SECURE_SHELL = ITEMS.register("materialized_secure_shell",
-            () -> new MaterializedSecureShellItem(new Item.Properties().stacksTo(1)));
     public static final DeferredItem<Item> MATERIALIZED_BIT_CRUSHER = ITEMS.register("materialized_bit_crusher",
             () -> new MaterializedBitCrusherItem(new Item.Properties().stacksTo(1)));
     public static final DeferredItem<Item> MATERIALIZED_STACK_OVERFLOW = ITEMS.register("materialized_stack_overflow",

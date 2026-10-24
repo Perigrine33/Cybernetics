@@ -1,0 +1,14 @@
+{
+  "structures": [
+    {
+      "structure": "createcybernetics:data_center",
+      "weight": 1
+    }
+  ],
+  "placement": {
+    "type": "minecraft:random_spread",
+    "salt": 193884267,
+    "spacing": 96,
+    "separation": 32
+  }
+}

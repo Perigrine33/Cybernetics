@@ -82,6 +82,7 @@ public class ComputerBlockEntity extends BlockEntity implements ExternalEnergyIn
 
         if (level instanceof ServerLevel) {
             ensureComputerRegistration();
+            ComputerBlock.updateConnectionState(level, worldPosition);
         }
     }
 
@@ -98,6 +99,7 @@ public class ComputerBlockEntity extends BlockEntity implements ExternalEnergyIn
         if (level.isClientSide) return;
 
         blockEntity.ensureComputerRegistration();
+        ComputerBlock.updateConnectionState(level, pos);
 
         if (blockEntity.externalEnergyInputTicks > 0) {
             blockEntity.externalEnergyInputTicks--;

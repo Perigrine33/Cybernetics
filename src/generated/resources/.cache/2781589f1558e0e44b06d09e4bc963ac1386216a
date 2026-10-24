@@ -1,4 +1,4 @@
-// 1.21.1	2026-08-21T12:27:27.171261	Tags for minecraft:item mod id createcybernetics
+// 1.21.1	2026-10-05T17:13:10.2845672	Tags for minecraft:item mod id createcybernetics
 facebceb0f7eaac59aec077332daccfdb5c937c8 data/createcybernetics/tags/item/arm_cannon_ammo.json
 b1320de07e39550e4ffb92e02bbb5123ed2f6209 data/createcybernetics/tags/item/arm_upgrades.json
 c3bef8bc9fc1d7e5267a79e0b1abd96b09536973 data/createcybernetics/tags/item/base_cyberware.json
@@ -14,7 +14,7 @@ f04aebd3a507204edbea582c1beea66ffb2c39d8 data/createcybernetics/tags/item/bone_u
 9d449aad0f5a0acd803caa4563f98bc27ecf148d data/createcybernetics/tags/item/component_item.json
 28c4c440e28061edc7568506a533d3c19531bc13 data/createcybernetics/tags/item/crushed_raw_materials.json
 0764ff3864c05c9ce3f4950f128d7c352043d38a data/createcybernetics/tags/item/cybereye_variants.json
-3979e8ac1c93c47ae046045fd45e9e6a1b7787f5 data/createcybernetics/tags/item/cyberware_item.json
+e2b6386c1d63cab4dcef08301c8f550d43725758 data/createcybernetics/tags/item/cyberware_item.json
 59df4a7ef90f1f56e0253d46ee0b39873e5e7107 data/createcybernetics/tags/item/data_shards.json
 33f59e16a27d27d6e917a43c228fbd1187561e74 data/createcybernetics/tags/item/defaults_fail_as_missing_when_unpowered.json
 ba5c986963e36c243fe371e1c3934ab629d37809 data/createcybernetics/tags/item/energy_generating_cyberware.json
@@ -46,7 +46,7 @@ da7baffdd7686e61aae4892efa529dd0912da73a data/createcybernetics/tags/item/leg_up
 fe233642dd5e014956153103e20b4e873dca5f09 data/createcybernetics/tags/item/lungs_items.json
 4b58bd067b16a3bc460afd95012f41c7ed2b355a data/createcybernetics/tags/item/lungs_replacements.json
 394ac5d2fc71f86489edf44368ff2bf1114060dc data/createcybernetics/tags/item/lung_upgrades.json
-d90535fe6bfac62f0020d771d6615e69c9a5d4e2 data/createcybernetics/tags/item/macroprograms.json
+6033174db2becc42b6ee45836d15a10448cd0ecc data/createcybernetics/tags/item/macroprograms.json
 cbcffea8e0f24496db28e8d96c7fa8714cec2bda data/createcybernetics/tags/item/mantis_blades.json
 c3527796fef92e1b23cdb5d4779a66354d1e2355 data/createcybernetics/tags/item/meat_arms.json
 d7b7fb159d8fe6d3cb21b7d62d6d830df6851413 data/createcybernetics/tags/item/meat_legs.json

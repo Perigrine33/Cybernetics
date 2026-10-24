@@ -7,6 +7,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.saveddata.SavedData;
 
 import java.util.Collection;
@@ -17,24 +18,28 @@ import java.util.UUID;
 public class CyberspaceDungeonSavedData extends SavedData {
     private static final String DATA_NAME = "createcybernetics_cyberspace_dungeons";
 
+    private static final String NBT_ALLOCATION_SALT = "AllocationSalt";
     private static final String NBT_DUNGEONS = "Dungeons";
-    private static final String NBT_SERVER_BINDINGS = "ServerBindings";
 
     private static final String NBT_SERVER_ID = "ServerId";
     private static final String NBT_CELL_X = "CellX";
     private static final String NBT_CELL_Z = "CellZ";
+
     private static final String NBT_ENTRY_X = "EntryX";
     private static final String NBT_ENTRY_Y = "EntryY";
     private static final String NBT_ENTRY_Z = "EntryZ";
-    private static final String NBT_GENERATED = "Generated";
 
-    private static final String NBT_DIMENSION = "Dimension";
-    private static final String NBT_BLOCK_X = "BlockX";
-    private static final String NBT_BLOCK_Y = "BlockY";
-    private static final String NBT_BLOCK_Z = "BlockZ";
+    private static final String NBT_GENERATED = "Generated";
+    private static final String NBT_PROVISIONED = "Provisioned";
+
+    private static final String NBT_ENDPOINT_DIMENSION = "EndpointDimension";
+    private static final String NBT_ENDPOINT_X = "EndpointX";
+    private static final String NBT_ENDPOINT_Y = "EndpointY";
+    private static final String NBT_ENDPOINT_Z = "EndpointZ";
+
+    private long allocationSalt = RandomSource.create().nextLong();
 
     private final Map<UUID, DungeonRecord> dungeons = new HashMap<>();
-    private final Map<ServerBindingKey, UUID> serverBindings = new HashMap<>();
 
     public static CyberspaceDungeonSavedData get(MinecraftServer server) {
         return server.overworld().getDataStorage().computeIfAbsent(new Factory<>(CyberspaceDungeonSavedData::new, CyberspaceDungeonSavedData::load), DATA_NAME);
@@ -43,54 +48,55 @@ public class CyberspaceDungeonSavedData extends SavedData {
     public static CyberspaceDungeonSavedData load(CompoundTag tag, HolderLookup.Provider provider) {
         CyberspaceDungeonSavedData data = new CyberspaceDungeonSavedData();
 
-        if (tag.contains(NBT_DUNGEONS, Tag.TAG_LIST)) {
-            ListTag dungeonList = tag.getList(NBT_DUNGEONS, Tag.TAG_COMPOUND);
-
-            for (int i = 0; i < dungeonList.size(); i++) {
-                CompoundTag dungeonTag = dungeonList.getCompound(i);
-
-                if (!dungeonTag.hasUUID(NBT_SERVER_ID)) {
-                    continue;
-                }
-
-                UUID serverId = dungeonTag.getUUID(NBT_SERVER_ID);
-                int cellX = dungeonTag.getInt(NBT_CELL_X);
-                int cellZ = dungeonTag.getInt(NBT_CELL_Z);
-                int entryX = dungeonTag.getInt(NBT_ENTRY_X);
-                int entryY = dungeonTag.getInt(NBT_ENTRY_Y);
-                int entryZ = dungeonTag.getInt(NBT_ENTRY_Z);
-                boolean generated = dungeonTag.getBoolean(NBT_GENERATED);
-
-                data.dungeons.put(serverId, new DungeonRecord(serverId, cellX, cellZ, new BlockPos(entryX, entryY, entryZ), generated));
-            }
+        if (tag.contains(NBT_ALLOCATION_SALT, Tag.TAG_LONG)) {
+            data.allocationSalt = tag.getLong(NBT_ALLOCATION_SALT);
+        } else {
+            data.setDirty();
         }
 
-        if (tag.contains(NBT_SERVER_BINDINGS, Tag.TAG_LIST)) {
-            ListTag bindingList = tag.getList(NBT_SERVER_BINDINGS, Tag.TAG_COMPOUND);
+        if (!tag.contains(NBT_DUNGEONS, Tag.TAG_LIST)) {
+            return data;
+        }
 
-            for (int i = 0; i < bindingList.size(); i++) {
-                CompoundTag bindingTag = bindingList.getCompound(i);
+        ListTag dungeonList = tag.getList(NBT_DUNGEONS, Tag.TAG_COMPOUND);
 
-                if (!bindingTag.hasUUID(NBT_SERVER_ID)) {
-                    continue;
+        for (int i = 0; i < dungeonList.size(); i++) {
+            CompoundTag dungeonTag = dungeonList.getCompound(i);
+
+            if (!dungeonTag.hasUUID(NBT_SERVER_ID)) continue;
+
+            UUID serverId = dungeonTag.getUUID(NBT_SERVER_ID);
+
+            int cellX = dungeonTag.getInt(NBT_CELL_X);
+            int cellZ = dungeonTag.getInt(NBT_CELL_Z);
+
+            BlockPos entryPos = new BlockPos(
+                    dungeonTag.getInt(NBT_ENTRY_X),
+                    dungeonTag.getInt(NBT_ENTRY_Y),
+                    dungeonTag.getInt(NBT_ENTRY_Z)
+            );
+
+            boolean generated = dungeonTag.getBoolean(NBT_GENERATED);
+            boolean provisioned = dungeonTag.getBoolean(NBT_PROVISIONED);
+
+            ResourceLocation endpointDimension = null;
+            BlockPos endpointPos = null;
+
+            if (provisioned) {
+                endpointDimension = ResourceLocation.tryParse(dungeonTag.getString(NBT_ENDPOINT_DIMENSION));
+
+                if (endpointDimension != null) {
+                    endpointPos = new BlockPos(
+                            dungeonTag.getInt(NBT_ENDPOINT_X),
+                            dungeonTag.getInt(NBT_ENDPOINT_Y),
+                            dungeonTag.getInt(NBT_ENDPOINT_Z)
+                    );
+                } else {
+                    provisioned = false;
                 }
-
-                ResourceLocation dimension = ResourceLocation.tryParse(bindingTag.getString(NBT_DIMENSION));
-
-                if (dimension == null) {
-                    continue;
-                }
-
-                BlockPos pos = new BlockPos(
-                        bindingTag.getInt(NBT_BLOCK_X),
-                        bindingTag.getInt(NBT_BLOCK_Y),
-                        bindingTag.getInt(NBT_BLOCK_Z)
-                );
-
-                UUID serverId = bindingTag.getUUID(NBT_SERVER_ID);
-
-                data.serverBindings.put(new ServerBindingKey(dimension, pos), serverId);
             }
+
+            data.dungeons.put(serverId, new DungeonRecord(serverId, cellX, cellZ, entryPos, generated, provisioned, endpointDimension, endpointPos));
         }
 
         return data;
@@ -100,65 +106,115 @@ public class CyberspaceDungeonSavedData extends SavedData {
         return dungeons.get(serverId);
     }
 
-    public DungeonRecord getOrCreateDungeon(UUID serverId) {
-        DungeonRecord existing = dungeons.get(serverId);
+    public DungeonRecord getProvisionedDungeon(UUID serverId) {
+        DungeonRecord record = dungeons.get(serverId);
 
-        if (existing != null) {
-            return existing;
+        if (record == null || !record.provisioned()) {
+            return null;
         }
-
-        CellPos cell = findNextAvailableCell();
-        BlockPos entryPos = CyberspaceDungeonManager.getDefaultEntryPosition(cell.x(), cell.z());
-
-        DungeonRecord record = new DungeonRecord(serverId, cell.x(), cell.z(), entryPos, false);
-        dungeons.put(serverId, record);
-
-        setDirty();
 
         return record;
     }
 
-    public UUID getBoundServerId(ResourceLocation dimension, BlockPos pos) {
-        return serverBindings.get(new ServerBindingKey(dimension, pos));
-    }
-
-    public UUID getOrCreateServerBinding(ResourceLocation dimension, BlockPos pos, UUID proposedServerId) {
-        ServerBindingKey key = new ServerBindingKey(dimension, pos);
-        UUID existing = serverBindings.get(key);
+    public boolean registerProvisionedServer(UUID serverId, ResourceLocation endpointDimension, BlockPos endpointPos) {
+        DungeonRecord existing = dungeons.get(serverId);
 
         if (existing != null) {
-            return existing;
+            if (existing.provisioned()) {
+                return existing.endpointDimension() != null
+                        && existing.endpointPos() != null
+                        && existing.endpointDimension().equals(endpointDimension)
+                        && existing.endpointPos().equals(endpointPos);
+            }
+
+            DungeonRecord updated = new DungeonRecord(
+                    existing.serverId(),
+                    existing.cellX(),
+                    existing.cellZ(),
+                    existing.entryPos(),
+                    existing.generated(),
+                    true,
+                    endpointDimension,
+                    endpointPos.immutable()
+            );
+
+            dungeons.put(serverId, updated);
+            setDirty();
+
+            return true;
         }
 
-        serverBindings.put(key, proposedServerId);
+        CellPos cell = findAvailableCell(serverId);
+        BlockPos entryPos = CyberspaceDungeonManager.getDefaultEntryPosition(cell.x(), cell.z());
+
+        DungeonRecord record = new DungeonRecord(
+                serverId,
+                cell.x(),
+                cell.z(),
+                entryPos,
+                false,
+                true,
+                endpointDimension,
+                endpointPos.immutable()
+        );
+
+        dungeons.put(serverId, record);
         setDirty();
 
-        return proposedServerId;
+        return true;
+    }
+
+    public boolean isValidEndpoint(UUID serverId, ResourceLocation dimension, BlockPos pos) {
+        DungeonRecord record = getProvisionedDungeon(serverId);
+
+        if (record == null || record.endpointDimension() == null || record.endpointPos() == null) {
+            return false;
+        }
+
+        return record.endpointDimension().equals(dimension) && record.endpointPos().equals(pos);
     }
 
     public void markGenerated(UUID serverId, BlockPos entryPos) {
         DungeonRecord existing = dungeons.get(serverId);
 
-        if (existing == null) {
+        if (existing == null || !existing.provisioned()) {
             return;
         }
 
-        DungeonRecord updated = new DungeonRecord(existing.serverId(), existing.cellX(), existing.cellZ(), entryPos.immutable(), true);
-        dungeons.put(serverId, updated);
+        DungeonRecord updated = new DungeonRecord(
+                existing.serverId(),
+                existing.cellX(),
+                existing.cellZ(),
+                entryPos.immutable(),
+                true,
+                existing.provisioned(),
+                existing.endpointDimension(),
+                existing.endpointPos()
+        );
 
+        dungeons.put(serverId, updated);
         setDirty();
     }
 
     public void setEntryPosition(UUID serverId, BlockPos entryPos) {
         DungeonRecord existing = dungeons.get(serverId);
 
-        if (existing == null) {
+        if (existing == null || !existing.provisioned()) {
             return;
         }
 
-        DungeonRecord updated = new DungeonRecord(existing.serverId(), existing.cellX(), existing.cellZ(), entryPos.immutable(), existing.generated());
-        dungeons.put(serverId, updated);
+        DungeonRecord updated = new DungeonRecord(
+                existing.serverId(),
+                existing.cellX(),
+                existing.cellZ(),
+                entryPos.immutable(),
+                existing.generated(),
+                existing.provisioned(),
+                existing.endpointDimension(),
+                existing.endpointPos()
+        );
 
+        dungeons.put(serverId, updated);
         setDirty();
     }
 
@@ -166,34 +222,45 @@ public class CyberspaceDungeonSavedData extends SavedData {
         return dungeons.values();
     }
 
-    private CellPos findNextAvailableCell() {
-        if (!isCellUsed(0, 0)) {
-            return new CellPos(0, 0);
+    private CellPos findAvailableCell(UUID serverId) {
+        for (int attempt = 0; attempt < 100_000; attempt++) {
+            long seed = mixAllocationSeed(serverId, attempt);
+            RandomSource random = RandomSource.create(seed);
+
+            int cellX = random.nextInt(CyberspaceDungeonManager.MAX_CELL_RADIUS * 2 + 1) - CyberspaceDungeonManager.MAX_CELL_RADIUS;
+            int cellZ = random.nextInt(CyberspaceDungeonManager.MAX_CELL_RADIUS * 2 + 1) - CyberspaceDungeonManager.MAX_CELL_RADIUS;
+
+            if (!isCellAllowed(cellX, cellZ)) continue;
+            if (isCellUsed(cellX, cellZ)) continue;
+
+            return new CellPos(cellX, cellZ);
         }
 
-        for (int radius = 1; radius <= CyberspaceDungeonManager.MAX_CELL_RADIUS; radius++) {
-            for (int x = -radius; x <= radius; x++) {
-                if (!isCellUsed(x, -radius)) {
-                    return new CellPos(x, -radius);
-                }
+        throw new IllegalStateException("Unable to allocate a unique cyberspace dungeon cell");
+    }
 
-                if (!isCellUsed(x, radius)) {
-                    return new CellPos(x, radius);
-                }
-            }
+    private long mixAllocationSeed(UUID serverId, int attempt) {
+        long seed = allocationSalt;
 
-            for (int z = -radius + 1; z <= radius - 1; z++) {
-                if (!isCellUsed(-radius, z)) {
-                    return new CellPos(-radius, z);
-                }
+        seed ^= serverId.getMostSignificantBits();
+        seed = Long.rotateLeft(seed, 21);
+        seed *= 0x9E3779B97F4A7C15L;
 
-                if (!isCellUsed(radius, z)) {
-                    return new CellPos(radius, z);
-                }
-            }
-        }
+        seed ^= serverId.getLeastSignificantBits();
+        seed = Long.rotateLeft(seed, 17);
+        seed *= 0xD1B54A32D192ED03L;
 
-        throw new IllegalStateException("No available cyberspace dungeon cells remain");
+        seed ^= (long) attempt * 0x94D049BB133111EBL;
+
+        return seed;
+    }
+
+    private boolean isCellAllowed(int cellX, int cellZ) {
+        long centerX = (long) cellX * CyberspaceDungeonManager.DUNGEON_CELL_SIZE;
+        long centerZ = (long) cellZ * CyberspaceDungeonManager.DUNGEON_CELL_SIZE;
+
+        return Math.abs(centerX) >= CyberspaceDungeonManager.ORIGIN_EXCLUSION_RADIUS
+                || Math.abs(centerZ) >= CyberspaceDungeonManager.ORIGIN_EXCLUSION_RADIUS;
     }
 
     private boolean isCellUsed(int cellX, int cellZ) {
@@ -208,6 +275,8 @@ public class CyberspaceDungeonSavedData extends SavedData {
 
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider provider) {
+        tag.putLong(NBT_ALLOCATION_SALT, allocationSalt);
+
         ListTag dungeonList = new ListTag();
 
         for (DungeonRecord record : dungeons.values()) {
@@ -216,44 +285,39 @@ public class CyberspaceDungeonSavedData extends SavedData {
             dungeonTag.putUUID(NBT_SERVER_ID, record.serverId());
             dungeonTag.putInt(NBT_CELL_X, record.cellX());
             dungeonTag.putInt(NBT_CELL_Z, record.cellZ());
+
             dungeonTag.putInt(NBT_ENTRY_X, record.entryPos().getX());
             dungeonTag.putInt(NBT_ENTRY_Y, record.entryPos().getY());
             dungeonTag.putInt(NBT_ENTRY_Z, record.entryPos().getZ());
+
             dungeonTag.putBoolean(NBT_GENERATED, record.generated());
+            dungeonTag.putBoolean(NBT_PROVISIONED, record.provisioned());
+
+            if (record.provisioned() && record.endpointDimension() != null && record.endpointPos() != null) {
+                dungeonTag.putString(NBT_ENDPOINT_DIMENSION, record.endpointDimension().toString());
+                dungeonTag.putInt(NBT_ENDPOINT_X, record.endpointPos().getX());
+                dungeonTag.putInt(NBT_ENDPOINT_Y, record.endpointPos().getY());
+                dungeonTag.putInt(NBT_ENDPOINT_Z, record.endpointPos().getZ());
+            }
 
             dungeonList.add(dungeonTag);
         }
 
         tag.put(NBT_DUNGEONS, dungeonList);
 
-        ListTag bindingList = new ListTag();
-
-        for (Map.Entry<ServerBindingKey, UUID> entry : serverBindings.entrySet()) {
-            ServerBindingKey key = entry.getKey();
-
-            CompoundTag bindingTag = new CompoundTag();
-
-            bindingTag.putUUID(NBT_SERVER_ID, entry.getValue());
-            bindingTag.putString(NBT_DIMENSION, key.dimension().toString());
-            bindingTag.putInt(NBT_BLOCK_X, key.pos().getX());
-            bindingTag.putInt(NBT_BLOCK_Y, key.pos().getY());
-            bindingTag.putInt(NBT_BLOCK_Z, key.pos().getZ());
-
-            bindingList.add(bindingTag);
-        }
-
-        tag.put(NBT_SERVER_BINDINGS, bindingList);
-
         return tag;
     }
 
-    public record DungeonRecord(UUID serverId, int cellX, int cellZ, BlockPos entryPos, boolean generated) {}
-
-    private record ServerBindingKey(ResourceLocation dimension, BlockPos pos) {
-        private ServerBindingKey {
-            pos = pos.immutable();
-        }
-    }
+    public record DungeonRecord(
+            UUID serverId,
+            int cellX,
+            int cellZ,
+            BlockPos entryPos,
+            boolean generated,
+            boolean provisioned,
+            ResourceLocation endpointDimension,
+            BlockPos endpointPos
+    ) {}
 
     private record CellPos(int x, int z) {}
 }

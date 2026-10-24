@@ -184,10 +184,6 @@
         },
         {
           "type": "minecraft:item",
-          "name": "createcybernetics:macroprogram_secure_shell"
-        },
-        {
-          "type": "minecraft:item",
           "name": "createcybernetics:macroprogram_bit_crusher"
         },
         {
