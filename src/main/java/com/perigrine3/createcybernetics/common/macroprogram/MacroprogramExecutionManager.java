@@ -2,6 +2,7 @@ package com.perigrine3.createcybernetics.common.macroprogram;
 
 import com.perigrine3.createcybernetics.common.capabilities.ModAttachments;
 import com.perigrine3.createcybernetics.common.capabilities.PlayerCyberwareData;
+import com.perigrine3.createcybernetics.common.scheduling.StaggeredTickScheduler;
 import com.perigrine3.createcybernetics.cyberspace.CyberspaceHealingHandler;
 import com.perigrine3.createcybernetics.item.ModItems;
 import com.perigrine3.createcybernetics.item.macroprogram.MacroprogramItem;
@@ -33,6 +34,7 @@ public final class MacroprogramExecutionManager {
     private static final int SECURE_SHELL_MAX_BLOCKS = 10;
     private static final int NORMAL_INVENTORY_SLOT_COUNT = 36;
     private static final float RECOVERY_HEAL_AMOUNT = 6.0F;
+    private static final int CLEANUP_INTERVAL_TICKS = 20;
 
     private MacroprogramExecutionManager() {}
 
@@ -87,16 +89,34 @@ public final class MacroprogramExecutionManager {
     }
 
     public static void tick(ServerPlayer player) {
-        CompoundTag runtime = getRuntime(player);
+        boolean inCyberspace = player.level().dimension().equals(ModDimensions.CYBERSPACE_LEVEL);
+        CompoundTag persistent = player.getPersistentData();
 
-        cleanupCooldowns(player, runtime);
+        if (!inCyberspace) {
+            if (StaggeredTickScheduler.shouldRun(player, CLEANUP_INTERVAL_TICKS, StaggeredTickScheduler.TickPhase.MACROPROGRAM_CLEANUP)) {
+                MacroprogramArmorHandler.clear(player);
+                MacroprogramArmorEquipmentHandler.clear(player);
+            }
+            if (!persistent.contains(NBT_ROOT, Tag.TAG_COMPOUND)) {
+                return;
+            }
+            CompoundTag runtime = persistent.getCompound(NBT_ROOT);
+            cleanupCooldowns(player, runtime);
 
-        if (!player.level().dimension().equals(ModDimensions.CYBERSPACE_LEVEL)) {
-            endAllActivePrograms(player, true);
-            MacroprogramArmorHandler.clear(player);
-            MacroprogramArmorEquipmentHandler.clear(player);
+            CompoundTag activePrograms = runtime.getCompound(NBT_ACTIVE_PROGRAMS);
+            if (!activePrograms.isEmpty()) {
+                endAllActivePrograms(player, true);
+            }
+
+            if (runtime.getCompound(NBT_ACTIVE_PROGRAMS).isEmpty()
+                    && runtime.getCompound(NBT_COOLDOWNS).isEmpty()) {
+                persistent.remove(NBT_ROOT);
+            }
             return;
         }
+
+        CompoundTag runtime = getRuntime(player);
+        cleanupCooldowns(player, runtime);
 
         CompoundTag activePrograms = getActivePrograms(runtime);
 

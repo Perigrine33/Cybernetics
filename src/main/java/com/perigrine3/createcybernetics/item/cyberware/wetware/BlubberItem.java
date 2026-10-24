@@ -88,24 +88,34 @@ public class BlubberItem extends Item implements ICyberwareItem {
 
     @Override
     public void onTick(LivingEntity entity) {
-        if (!(entity instanceof Player player)) return;
-        if (player.level().isClientSide) return;
+    }
 
-        boolean hasPolarBearFur;
-
-        if (player.hasData(ModAttachments.CYBERWARE)) {
-            PlayerCyberwareData data = player.getData(ModAttachments.CYBERWARE);
-            hasPolarBearFur = data != null && data.hasSpecificItem(ModItems.WETWARE_POLARBEARFUR.get(), CyberwareSlot.MUSCLE);
-        } else {
-            hasPolarBearFur = false;
+    public static void syncColdSweatForBlubber(Player player, PlayerCyberwareData data) {
+        if (player == null || player.level().isClientSide) return;
+        if (data == null || !data.hasSpecificItem(ModItems.WETWARE_BLUBBER.get(), CyberwareSlot.MUSCLE)) {
+            return;
         }
 
+        boolean hasPolarBearFur = data.hasSpecificItem(ModItems.WETWARE_POLARBEARFUR.get(), CyberwareSlot.MUSCLE);
         if (!hasPolarBearFur) {
             ColdSweatCompat.applyColdResistance(player, 0.50);
             ColdSweatCompat.applyColdDampening(player, 0.3);
         } else {
             ColdSweatCompat.applyColdResistance(player, 1.0);
             ColdSweatCompat.applyColdDampening(player, 0.0);
+        }
+    }
+
+    @net.neoforged.fml.common.EventBusSubscriber(modid = com.perigrine3.createcybernetics.CreateCybernetics.MODID, bus = net.neoforged.fml.common.EventBusSubscriber.Bus.GAME)
+    public static final class EventHooks {
+        private EventHooks() {}
+
+        @net.neoforged.bus.api.SubscribeEvent
+        public static void onCyberwareStateChange(com.perigrine3.createcybernetics.event.custom.CyberwareStateChangeEvent event) {
+            var profile = event.getCurrentProfile();
+            if (profile != null && profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.BLUBBER)) {
+                syncColdSweatForBlubber(event.getPlayer(), event.getData());
+            }
         }
     }
 }

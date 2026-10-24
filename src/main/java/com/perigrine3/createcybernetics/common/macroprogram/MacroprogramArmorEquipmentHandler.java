@@ -40,32 +40,39 @@ public final class MacroprogramArmorEquipmentHandler {
     }
 
     public static void tick(ServerPlayer player) {
-        removeLooseRuntimeArmor(player);
+        boolean changed = removeLooseRuntimeArmor(player);
 
         ArmorSet set = getActiveArmorSet(player);
 
         if (set == null) {
-            clearRuntimeArmor(player);
+            if (clearRuntimeArmor(player) || changed) {
+                player.inventoryMenu.broadcastChanges();
+            }
             return;
         }
 
-        equip(player, EquipmentSlot.HEAD, set.helmet());
-        equip(player, EquipmentSlot.CHEST, set.chestplate());
-        equip(player, EquipmentSlot.LEGS, set.leggings());
-        equip(player, EquipmentSlot.FEET, set.boots());
+        changed |= equip(player, EquipmentSlot.HEAD, set.helmet());
+        changed |= equip(player, EquipmentSlot.CHEST, set.chestplate());
+        changed |= equip(player, EquipmentSlot.LEGS, set.leggings());
+        changed |= equip(player, EquipmentSlot.FEET, set.boots());
 
-        player.inventoryMenu.broadcastChanges();
+        if (changed) {
+            player.inventoryMenu.broadcastChanges();
+        }
     }
 
     public static void clear(ServerPlayer player) {
-        clearRuntimeArmor(player);
-        removeLooseRuntimeArmor(player);
+        boolean changed = clearRuntimeArmor(player);
+        changed |= removeLooseRuntimeArmor(player);
 
         if (player.containerMenu != null && isRuntimeArmor(player.containerMenu.getCarried())) {
             player.containerMenu.setCarried(ItemStack.EMPTY);
+            changed = true;
         }
 
-        player.inventoryMenu.broadcastChanges();
+        if (changed) {
+            player.inventoryMenu.broadcastChanges();
+        }
     }
 
     private static ArmorSet getActiveArmorSet(ServerPlayer player) {
@@ -152,39 +159,47 @@ public final class MacroprogramArmorEquipmentHandler {
         }
     }
 
-    private static void removeLooseRuntimeArmor(ServerPlayer player) {
+    private static boolean removeLooseRuntimeArmor(ServerPlayer player) {
+        boolean changed = false;
         for (int i = 0; i < NORMAL_INVENTORY_SLOT_COUNT; i++) {
             if (isRuntimeArmor(player.getInventory().getItem(i))) {
                 player.getInventory().setItem(i, ItemStack.EMPTY);
+                changed = true;
             }
         }
 
         if (isRuntimeArmor(player.getOffhandItem())) {
             player.setItemSlot(EquipmentSlot.OFFHAND, ItemStack.EMPTY);
+            changed = true;
         }
 
         if (player.containerMenu != null && isRuntimeArmor(player.containerMenu.getCarried())) {
             player.containerMenu.setCarried(ItemStack.EMPTY);
+            changed = true;
         }
+        return changed;
     }
 
-    private static void clearRuntimeArmor(ServerPlayer player) {
-        clearRuntimeArmorSlot(player, EquipmentSlot.HEAD);
-        clearRuntimeArmorSlot(player, EquipmentSlot.CHEST);
-        clearRuntimeArmorSlot(player, EquipmentSlot.LEGS);
-        clearRuntimeArmorSlot(player, EquipmentSlot.FEET);
+    private static boolean clearRuntimeArmor(ServerPlayer player) {
+        boolean changed = clearRuntimeArmorSlot(player, EquipmentSlot.HEAD);
+        changed |= clearRuntimeArmorSlot(player, EquipmentSlot.CHEST);
+        changed |= clearRuntimeArmorSlot(player, EquipmentSlot.LEGS);
+        changed |= clearRuntimeArmorSlot(player, EquipmentSlot.FEET);
+        return changed;
     }
 
-    private static void clearRuntimeArmorSlot(ServerPlayer player, EquipmentSlot slot) {
+    private static boolean clearRuntimeArmorSlot(ServerPlayer player, EquipmentSlot slot) {
         if (isRuntimeArmor(player.getItemBySlot(slot))) {
             player.setItemSlot(slot, ItemStack.EMPTY);
+            return true;
         }
+        return false;
     }
 
-    private static void equip(ServerPlayer player, EquipmentSlot slot, Item item) {
+    private static boolean equip(ServerPlayer player, EquipmentSlot slot, Item item) {
         ItemStack current = player.getItemBySlot(slot);
 
-        if (current.is(item)) return;
+        if (current.is(item)) return false;
 
         if (!current.isEmpty() && !isRuntimeArmor(current)) {
             if (!player.getInventory().add(current.copy())) {
@@ -193,6 +208,7 @@ public final class MacroprogramArmorEquipmentHandler {
         }
 
         player.setItemSlot(slot, new ItemStack(item));
+        return true;
     }
 
     private static boolean isRuntimeArmor(ItemStack stack) {

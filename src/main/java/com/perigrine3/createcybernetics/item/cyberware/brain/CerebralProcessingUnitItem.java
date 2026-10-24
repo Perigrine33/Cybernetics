@@ -240,11 +240,29 @@ public class CerebralProcessingUnitItem extends Item implements ICyberwareItem {
     public static final class ShutdownServerDecision {
         private ShutdownServerDecision() {}
 
+        @SubscribeEvent
+        public static void onCyberwareStateChange(com.perigrine3.createcybernetics.event.custom.CyberwareStateChangeEvent event) {
+            if (!(event.getPlayer() instanceof ServerPlayer sp)) return;
+            var profile = event.getCurrentProfile();
+            if (profile == null || !profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.CEREBRAL_PROCESSING_UNIT)) {
+                CompoundTag pt = sp.getPersistentData();
+                if (pt.getBoolean(NBT_SHUTDOWN_ACTIVE)) {
+                    clearShutdownState(sp);
+                    PacketDistributor.sendToPlayer(sp, new CerebralShutdownStatePayload(false));
+                }
+            }
+        }
+
         @SubscribeEvent(priority = EventPriority.LOWEST)
         public static void onTickPost(PlayerTickEvent.Post event) {
             Player p = event.getEntity();
             if (p.level().isClientSide) return;
             if (!(p instanceof ServerPlayer sp)) return;
+
+            var profile = com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager.getProfile(sp);
+            if (profile == null || !profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.CEREBRAL_PROCESSING_UNIT)) {
+                return;
+            }
 
             if (!sp.hasData(ModAttachments.CYBERWARE)) {
                 clearShutdownState(sp);
@@ -300,6 +318,11 @@ public class CerebralProcessingUnitItem extends Item implements ICyberwareItem {
             Player p = event.getEntity();
             if (p.level().isClientSide) return;
             if (!(p instanceof ServerPlayer sp)) return;
+
+            var profile = com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager.getProfile(sp);
+            if (profile == null || !profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.CEREBRAL_PROCESSING_UNIT)) {
+                return;
+            }
 
             CompoundTag pt = sp.getPersistentData();
             if (!pt.getBoolean(NBT_SHUTDOWN_ACTIVE)) return;

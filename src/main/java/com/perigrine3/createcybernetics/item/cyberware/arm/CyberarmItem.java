@@ -156,11 +156,6 @@ public class CyberarmItem extends Item implements ICyberwareItem {
         onInstalled(entity);
     }
 
-    @Override
-    public void onTick(LivingEntity entity) {
-        ICyberwareItem.super.onTick(entity);
-    }
-
     @EventBusSubscriber(modid = CreateCybernetics.MODID, bus = EventBusSubscriber.Bus.GAME)
     public static final class PowerFailHooks {
         private PowerFailHooks() {}
@@ -175,6 +170,11 @@ public class CyberarmItem extends Item implements ICyberwareItem {
 
             PlayerCyberwareData data = player.getData(ModAttachments.CYBERWARE);
             if (data == null) return;
+
+            var profile = com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager.getProfile(player, data);
+            if (profile != null && !profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.CYBERARM)) {
+                return;
+            }
 
             boolean leftDead = isCyberarmUnpowered(player, data, CyberwareSlot.LARM);
             boolean rightDead = isCyberarmUnpowered(player, data, CyberwareSlot.RARM);

@@ -1,5 +1,8 @@
 package com.perigrine3.createcybernetics.common.humanity;
 
+import com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager;
+import com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile;
+import com.perigrine3.createcybernetics.common.scheduling.StaggeredTickScheduler;
 import com.perigrine3.createcybernetics.CreateCybernetics;
 import com.perigrine3.createcybernetics.api.CyberwareSlot;
 import com.perigrine3.createcybernetics.api.InstalledCyberware;
@@ -50,12 +53,20 @@ public final class DataIntegrityHandler {
         }
 
         PlayerCyberwareData data = serverPlayer.getData(ModAttachments.CYBERWARE);
-        if (!hasCerebralProcessingUnit(data)) {
+        if (!hasCerebralProcessingUnit(serverPlayer, data)) {
             SLEEP_STATES.remove(serverPlayer.getUUID());
             return;
         }
 
         tickDataIntegrity(serverPlayer, data);
+    }
+
+    private static boolean hasCerebralProcessingUnit(Player player, PlayerCyberwareData data) {
+        CyberwareLoadoutProfile profile = CyberwareProfileManager.getProfile(player, data);
+        if (profile != null) {
+            return profile.hasCapability(CyberwareLoadoutProfile.CapabilityFlag.CEREBRAL_PROCESSING_UNIT);
+        }
+        return hasCerebralProcessingUnit(data);
     }
 
     public static boolean hasCerebralProcessingUnit(PlayerCyberwareData data) {
@@ -203,7 +214,7 @@ public final class DataIntegrityHandler {
 
         tickAwake(player, data, sleepState, maxIntegrity);
 
-        if (player.tickCount % SYNC_INTERVAL_TICKS == 0) {
+        if (StaggeredTickScheduler.shouldRun(player, SYNC_INTERVAL_TICKS, StaggeredTickScheduler.TickPhase.DATA_INTEGRITY)) {
             sync(player);
         }
     }
@@ -252,7 +263,7 @@ public final class DataIntegrityHandler {
             );
         }
 
-        if (player.tickCount % SYNC_INTERVAL_TICKS == 0) {
+        if (StaggeredTickScheduler.shouldRun(player, SYNC_INTERVAL_TICKS, StaggeredTickScheduler.TickPhase.DATA_INTEGRITY)) {
             sync(player);
         }
     }

@@ -1,5 +1,8 @@
 package com.perigrine3.createcybernetics.event.custom;
 
+import com.perigrine3.createcybernetics.common.scheduling.StaggeredTickScheduler;
+import com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager;
+import com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile;
 import com.perigrine3.createcybernetics.CreateCybernetics;
 import com.perigrine3.createcybernetics.api.CyberwareSlot;
 import com.perigrine3.createcybernetics.api.InstalledCyberware;
@@ -51,6 +54,16 @@ public final class SculkedCyberwareTickEvents {
         }
 
         PlayerCyberwareData data = player.getData(ModAttachments.CYBERWARE);
+        if (data == null) {
+            return;
+        }
+
+        CyberwareLoadoutProfile profile = CyberwareProfileManager.getProfile(player, data);
+        if (profile != null
+                && !profile.sculkedBody()
+                && !profile.hasCapability(CyberwareLoadoutProfile.CapabilityFlag.SCULKED_IMPLANT)) {
+            return;
+        }
 
         InstalledSculkedCyberware installed = getInstalledSculkedCyberware(data);
         boolean fullConversion = SculkedConversionHelper.hasFullDefaultSculkConversion(data);
@@ -61,6 +74,10 @@ public final class SculkedCyberwareTickEvents {
 
         tickSculkedEffect(player);
 
+        if (!StaggeredTickScheduler.shouldRun(player, FOOD_CHECK_INTERVAL_TICKS, StaggeredTickScheduler.TickPhase.SCULKED_CHECK)) {
+            return;
+        }
+
         boolean standingOnSculk = SculkedConversionHelper.isStandingOnSculk(player);
 
         if (installed.hasIntestines()) {
@@ -70,6 +87,12 @@ public final class SculkedCyberwareTickEvents {
         if (installed.hasMuscle() || fullConversion) {
             tickPhysicalEffects(player, standingOnSculk, fullConversion);
         }
+    }
+
+    public static boolean isSculkedCyberware(ItemStack stack) {
+        return stack != null
+                && !stack.isEmpty()
+                && (stack.getItem() instanceof SculkedIntestinesItem || stack.getItem() instanceof SculkedMuscleItem);
     }
 
     private static InstalledSculkedCyberware getInstalledSculkedCyberware(PlayerCyberwareData data) {
@@ -116,7 +139,7 @@ public final class SculkedCyberwareTickEvents {
             return;
         }
 
-        if ((player.tickCount % SCULKED_EFFECT_CHECK_INTERVAL_TICKS) != 0) {
+        if (!StaggeredTickScheduler.shouldRun(player, SCULKED_EFFECT_CHECK_INTERVAL_TICKS, StaggeredTickScheduler.TickPhase.SCULKED_CHECK)) {
             return;
         }
 
@@ -126,10 +149,6 @@ public final class SculkedCyberwareTickEvents {
     }
 
     private static void tickExperienceFeeding(Player player, boolean standingOnSculk) {
-        if ((player.tickCount % FOOD_CHECK_INTERVAL_TICKS) != 0) {
-            return;
-        }
-
         FoodData foodData = player.getFoodData();
 
         if (foodData.getFoodLevel() >= 20) {
@@ -155,10 +174,6 @@ public final class SculkedCyberwareTickEvents {
     }
 
     private static void tickPhysicalEffects(Player player, boolean standingOnSculk, boolean fullConversion) {
-        if ((player.tickCount % EFFECT_CHECK_INTERVAL_TICKS) != 0) {
-            return;
-        }
-
         int strengthAmplifier = -1;
         int speedAmplifier = -1;
 

@@ -116,31 +116,27 @@ public class OregrinderItem extends Item implements ICyberwareItem {
         clearMetalEating(player);
     }
 
-    @Override
-    public void onTick(LivingEntity entity, ItemStack installedStack, CyberwareSlot slot, int index) {
-    }
-
-    @Override
-    public void onTick(LivingEntity entity) {
-    }
-
     public static boolean hasOregrinderInstalled(PlayerCyberwareData data) {
         if (data == null || data.getAll() == null) {
             return false;
         }
 
-        for (InstalledCyberware[] installedArray : data.getAll().values()) {
-            if (installedArray == null) continue;
+        var profile = com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager.getProfile(null, data);
+        if (profile != null) {
+            return profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.OREGRINDER);
+        }
 
-            for (InstalledCyberware installed : installedArray) {
-                if (installed == null) continue;
+        InstalledCyberware[] installedArray = data.getAll().get(CyberwareSlot.ORGANS);
+        if (installedArray == null) return false;
 
-                ItemStack stack = installed.getItem();
-                if (stack.isEmpty()) continue;
+        for (InstalledCyberware installed : installedArray) {
+            if (installed == null) continue;
 
-                if (stack.getItem() instanceof OregrinderItem) {
-                    return true;
-                }
+            ItemStack stack = installed.getItem();
+            if (stack.isEmpty()) continue;
+
+            if (stack.getItem() instanceof OregrinderItem) {
+                return true;
             }
         }
 
@@ -148,12 +144,13 @@ public class OregrinderItem extends Item implements ICyberwareItem {
     }
 
     private static boolean isInstalled(Player player) {
-        if (player == null) {
+        if (player == null || !player.hasData(ModAttachments.CYBERWARE)) {
             return false;
         }
 
         PlayerCyberwareData data = player.getData(ModAttachments.CYBERWARE);
-        return hasOregrinderInstalled(data);
+        var profile = com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager.getProfile(player, data);
+        return profile != null && profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.OREGRINDER);
     }
 
     private static void keepHungerFull(Player player) {

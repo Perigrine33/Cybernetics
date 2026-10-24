@@ -1,5 +1,6 @@
 package com.perigrine3.createcybernetics.item.cyberware.heart;
 
+import com.perigrine3.createcybernetics.common.scheduling.StaggeredTickScheduler;
 import com.perigrine3.createcybernetics.api.CyberwareSlot;
 import com.perigrine3.createcybernetics.api.ICyberwareItem;
 import com.perigrine3.createcybernetics.api.InstalledCyberware;
@@ -107,15 +108,10 @@ public class MechanicalHeartItem extends Item implements ICyberwareItem {
             return;
         }
 
-        if ((entity.level().getGameTime() % 20L) == 0L) {
+        if (StaggeredTickScheduler.shouldRun(entity, 20, StaggeredTickScheduler.TickPhase.MECHANICAL_HEART)) {
             DamageSource src = entity.damageSources().generic();
             entity.hurt(src, DAMAGE_PER_SECOND);
         }
-    }
-
-    @Override
-    public void onTick(LivingEntity entity) {
-        if (entity.level().isClientSide) return;
     }
 
     private static InstalledCyberware getInstalledCyberware(LivingEntity entity, CyberwareSlot slot, int index) {

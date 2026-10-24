@@ -89,6 +89,9 @@ public class CyberentitySandevistanGoal extends Goal {
         mob.getNavigation().moveTo(target, ACTIVE_MOVE_SPEED);
         mob.getLookControl().setLookAt(target, 30.0F, 30.0F);
         mob.setSprinting(true);
+        if (mob instanceof com.perigrine3.createcybernetics.api.ISandevistanTrailState trailState) {
+            trailState.createcybernetics$setSandevistanTrailActive(true);
+        }
     }
 
     @Override
@@ -123,6 +126,9 @@ public class CyberentitySandevistanGoal extends Goal {
     public void stop() {
         mob.setSprinting(false);
         meleeAttackCooldown = 0;
+        if (mob instanceof com.perigrine3.createcybernetics.api.ISandevistanTrailState trailState) {
+            trailState.createcybernetics$setSandevistanTrailActive(false);
+        }
 
         LivingEntity target = mob.getTarget();
         if (isValidTarget(target)) {

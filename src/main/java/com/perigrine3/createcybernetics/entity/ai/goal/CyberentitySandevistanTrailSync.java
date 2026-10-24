@@ -19,10 +19,11 @@ public final class CyberentitySandevistanTrailSync {
         if (living.level().isClientSide) return;
         if (living instanceof Player) return;
         if (!(living instanceof ISandevistanTrailState trailState)) return;
+        if (!trailState.createcybernetics$isSandevistanTrailActive()) return;
 
         long activeUntil = living.getPersistentData().getLong(CyberentitySandevistanGoal.NBT_SANDY_ACTIVE_UNTIL);
-        boolean active = activeUntil > living.level().getGameTime();
-
-        trailState.createcybernetics$setSandevistanTrailActive(active);
+        if (activeUntil <= living.level().getGameTime()) {
+            trailState.createcybernetics$setSandevistanTrailActive(false);
+        }
     }
 }

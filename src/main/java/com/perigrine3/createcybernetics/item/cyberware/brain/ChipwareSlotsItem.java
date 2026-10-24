@@ -4,6 +4,7 @@ import com.perigrine3.createcybernetics.api.CyberwareSlot;
 import com.perigrine3.createcybernetics.api.ICyberwareItem;
 import com.perigrine3.createcybernetics.common.capabilities.ModAttachments;
 import com.perigrine3.createcybernetics.common.capabilities.PlayerCyberwareData;
+import com.perigrine3.createcybernetics.common.mining.MiningRollEngine;
 import com.perigrine3.createcybernetics.common.quickhack.QuickhackExecutionContext;
 import com.perigrine3.createcybernetics.common.quickhack.QuickhackExecutionResult;
 import com.perigrine3.createcybernetics.common.quickhack.QuickhackExecutor;
@@ -97,7 +98,9 @@ public class ChipwareSlotsItem extends Item implements ICyberwareItem {
         CyberwareAttributeHelper.removeModifier(entity, "redshard_speed");
         CyberwareAttributeHelper.removeModifier(entity, "redshard_knockback");
         CyberwareAttributeHelper.removeModifier(entity, "orangeshard_ore");
+        CyberwareAttributeHelper.removeModifier(entity, "orangeshard_ore_2");
         CyberwareAttributeHelper.removeModifier(entity, "orangeshard_mining");
+        CyberwareAttributeHelper.removeModifier(entity, "orangeshard_mining_2");
         CyberwareAttributeHelper.removeModifier(entity, "yellowshard_haggling");
         CyberwareAttributeHelper.removeModifier(entity, "greenshard_xp");
         CyberwareAttributeHelper.removeModifier(entity, "cyanshard_aim");
@@ -122,7 +125,10 @@ public class ChipwareSlotsItem extends Item implements ICyberwareItem {
         CyberwareAttributeHelper.removeModifier(player, "redshard_speed");
         CyberwareAttributeHelper.removeModifier(player, "redshard_knockback");
         CyberwareAttributeHelper.removeModifier(player, "orangeshard_ore");
+        CyberwareAttributeHelper.removeModifier(player, "orangeshard_ore_2");
         CyberwareAttributeHelper.removeModifier(player, "orangeshard_mining");
+        CyberwareAttributeHelper.removeModifier(player, "orangeshard_mining_2");
+        MiningRollEngine.invalidatePlayerSnapshot(player.getUUID());
         CyberwareAttributeHelper.removeModifier(player, "yellowshard_haggling");
         CyberwareAttributeHelper.removeModifier(player, "greenshard_xp");
         CyberwareAttributeHelper.removeModifier(player, "cyanshard_aim");
@@ -143,9 +149,16 @@ public class ChipwareSlotsItem extends Item implements ICyberwareItem {
 
     @Override
     public void onTick(LivingEntity entity) {
-        if (!(entity instanceof ServerPlayer player)) return;
+    }
 
-        PlayerCyberwareData data = player.getData(ModAttachments.CYBERWARE);
+    public static void syncChipwareEffects(ServerPlayer player, PlayerCyberwareData data) {
+        if (player == null || data == null) return;
+
+        com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile profile =
+                com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager.getProfile(player, data);
+        if (profile != null && !profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.CHIPWARE_SLOTS)) {
+            return;
+        }
 
         tickSlottedQuickhacks(player, data);
 
@@ -159,13 +172,9 @@ public class ChipwareSlotsItem extends Item implements ICyberwareItem {
             CyberwareAttributeHelper.removeModifier(player, "redshard_knockback");
         }
 
-        if (data.hasChipwareShardExact(ModItems.DATA_SHARD_ORANGE.get())) {
-            CyberwareAttributeHelper.applyModifier(player, "orangeshard_ore");
-            CyberwareAttributeHelper.applyModifier(player, "orangeshard_mining");
-        } else {
-            CyberwareAttributeHelper.removeModifier(player, "orangeshard_ore");
-            CyberwareAttributeHelper.removeModifier(player, "orangeshard_mining");
-        }
+        int orangeShardCount = data.getChipwareShardExactCount(ModItems.DATA_SHARD_ORANGE.get());
+        MiningRollEngine.syncOrangeShardAttributes(player, orangeShardCount);
+        MiningRollEngine.refreshPlayerSnapshotAsync(player, data);
 
         if (data.hasChipwareShardExact(ModItems.DATA_SHARD_YELLOW.get())) {
             CyberwareAttributeHelper.applyModifier(player, "yellowshard_haggling");
@@ -223,8 +232,12 @@ public class ChipwareSlotsItem extends Item implements ICyberwareItem {
             CyberwareAttributeHelper.removeModifier(player, "grayshard_handling");
         }
 
+        syncBlackShardModifiers(player, data, player.isSprinting());
+    }
+
+    private static void syncBlackShardModifiers(ServerPlayer player, PlayerCyberwareData data, boolean sprinting) {
         if (data.hasChipwareShardExact(ModItems.DATA_SHARD_BLACK.get())) {
-            if (player.isSprinting()) {
+            if (sprinting) {
                 CyberwareAttributeHelper.removeModifier(player, "blackshard_crouch");
                 CyberwareAttributeHelper.applyModifier(player, "blackshard_sprint");
             } else {
@@ -235,11 +248,31 @@ public class ChipwareSlotsItem extends Item implements ICyberwareItem {
             CyberwareAttributeHelper.removeModifier(player, "blackshard_sprint");
             CyberwareAttributeHelper.removeModifier(player, "blackshard_crouch");
         }
+    }
 
-        if (data.hasChipwareShardExact(ModItems.DATA_SHARD_BIOCHIP.get())) {
+    @net.neoforged.fml.common.EventBusSubscriber(modid = com.perigrine3.createcybernetics.CreateCybernetics.MODID, bus = net.neoforged.fml.common.EventBusSubscriber.Bus.GAME)
+    public static final class EventHooks {
+        private EventHooks() {}
 
-        } else {
+        @net.neoforged.bus.api.SubscribeEvent
+        public static void onCyberwareStateChange(com.perigrine3.createcybernetics.event.custom.CyberwareStateChangeEvent event) {
+            if (!(event.getPlayer() instanceof ServerPlayer player)) return;
+            syncChipwareEffects(player, event.getData());
+        }
 
+        @net.neoforged.bus.api.SubscribeEvent
+        public static void onChipwareShardChange(com.perigrine3.createcybernetics.event.custom.CyberwareChipwareShardChangeEvent event) {
+            if (!(event.getPlayer() instanceof ServerPlayer player)) return;
+            syncChipwareEffects(player, event.getData());
+        }
+
+        @net.neoforged.bus.api.SubscribeEvent
+        public static void onMovementStateChange(com.perigrine3.createcybernetics.event.custom.CyberwarePlayerMovementStateEvent event) {
+            if (!(event.getPlayer() instanceof ServerPlayer player)) return;
+            if (event.getPreviousState().sprinting() == event.getCurrentState().sprinting()) return;
+            PlayerCyberwareData data = event.getData();
+            if (data == null || !data.hasChipwareShardExact(ModItems.DATA_SHARD_BLACK.get())) return;
+            syncBlackShardModifiers(player, data, event.getCurrentState().sprinting());
         }
     }
 

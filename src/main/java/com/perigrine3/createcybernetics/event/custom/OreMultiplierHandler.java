@@ -1,96 +1,108 @@
 package com.perigrine3.createcybernetics.event.custom;
 
 import com.perigrine3.createcybernetics.CreateCybernetics;
-import com.perigrine3.createcybernetics.common.attributes.ModAttributes;
-import com.perigrine3.createcybernetics.common.capabilities.ModAttachments;
-import com.perigrine3.createcybernetics.common.capabilities.PlayerCyberwareData;
-import com.perigrine3.createcybernetics.item.ModItems;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Holder;
-import net.minecraft.core.registries.Registries;
+import com.perigrine3.createcybernetics.common.mining.MiningRollEngine;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraft.world.item.enchantment.EnchantmentHelper;
-import net.minecraft.world.item.enchantment.Enchantments;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.loot.LootContext;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.common.Tags;
+import net.neoforged.neoforge.event.TagsUpdatedEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.level.BlockDropsEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
+import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 
-import java.util.List;
+import java.util.function.Consumer;
 
 @EventBusSubscriber(modid = CreateCybernetics.MODID, bus = EventBusSubscriber.Bus.GAME)
 public final class OreMultiplierHandler {
-    private OreMultiplierHandler() {}
+
+    private OreMultiplierHandler() {
+    }
 
     @SubscribeEvent
-    public static void onBreak(BlockEvent.BreakEvent event) {
-        Player player = event.getPlayer();
-        if (player.isCreative()) return;
-        if (!(event.getLevel() instanceof ServerLevel level)) return;
-        PlayerCyberwareData data = player.getData(ModAttachments.CYBERWARE);
+    public static void onTagsUpdated(TagsUpdatedEvent event) {
+        MiningRollEngine.rebuildOreIndexAsync();
+    }
 
-        if (data.hasChipwareShardExact(ModItems.DATA_SHARD_ORANGE.get())) {
+    @SubscribeEvent
+    public static void onServerAboutToStart(ServerAboutToStartEvent event) {
+        MiningRollEngine.rebuildOreIndexAsync();
+    }
 
-            BlockPos pos = event.getPos();
-            BlockState state = event.getState();
-            ItemStack tool = player.getMainHandItem();
+    @SubscribeEvent
+    public static void onServerStopped(ServerStoppedEvent event) {
+        MiningRollEngine.clearAllCaches();
+    }
 
-            if (state.is(Blocks.ANCIENT_DEBRIS)) {
-                if (hasSilkTouch(level, tool)) return;
+    @SubscribeEvent
+    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        MiningRollEngine.refreshPlayerSnapshotAsync(event.getEntity());
+    }
 
-                level.destroyBlock(pos, false, player);
-                Block.popResource(level, pos, new ItemStack(Items.NETHERITE_SCRAP, 2));
+    @SubscribeEvent
+    public static void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
+        MiningRollEngine.refreshPlayerSnapshotAsync(event.getEntity());
+    }
 
-                if (!tool.isEmpty()) {
-                    tool.hurtAndBreak(1, player, EquipmentSlot.MAINHAND);
-                }
+    @SubscribeEvent
+    public static void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
+        MiningRollEngine.refreshPlayerSnapshotAsync(event.getEntity());
+    }
 
-                event.setCanceled(true);
-                return;
-            }
-
-            double mult = player.getAttributeValue(ModAttributes.ORE_DROP_MULTIPLIER);
-            if (!Double.isFinite(mult) || mult <= 1.0D) return;
-
-            if (!state.is(Tags.Blocks.ORES)) return;
-            if (hasSilkTouch(level, tool)) return;
-
-            BlockEntity be = level.getBlockEntity(pos);
-            List<ItemStack> drops = Block.getDrops(state, level, pos, be, player, tool);
-
-            for (ItemStack drop : drops) {
-                if (drop.isEmpty()) continue;
-
-                int base = drop.getCount();
-                if (base <= 0) continue;
-
-                int extra = (int) Math.floor(base * (mult - 1.0D));
-                if (extra <= 0) continue;
-
-                ItemStack extraStack = drop.copy();
-                extraStack.setCount(extra);
-                Block.popResource(level, pos, extraStack);
-            }
+    @SubscribeEvent
+    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (event.getEntity() != null) {
+            MiningRollEngine.invalidatePlayerSnapshot(event.getEntity().getUUID());
         }
     }
 
-    private static boolean hasSilkTouch(Level level, ItemStack tool) {
-        if (tool.isEmpty()) return false;
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onBlockBreak(BlockEvent.BreakEvent event) {
+        if (event.isCanceled()) {
+            return;
+        }
 
-        Holder<Enchantment> silk = level.registryAccess()
-                .lookupOrThrow(Registries.ENCHANTMENT)
-                .getOrThrow(Enchantments.SILK_TOUCH);
+        LevelAccessor level = event.getLevel();
+        if (!(level instanceof ServerLevel serverLevel)) {
+            return;
+        }
 
-        return EnchantmentHelper.getItemEnchantmentLevel(silk, tool) > 0;
+        Player player = event.getPlayer();
+        if (player == null || player.isCreative() || player.isSpectator()) {
+            return;
+        }
+
+        BlockState state = event.getState();
+        if (!MiningRollEngine.getClassifier().classify(state).isEligibleOre()) {
+            return;
+        }
+
+        MiningRollEngine.beginBreakContext(
+                player,
+                event.getPos(),
+                state,
+                player.getMainHandItem(),
+                serverLevel.getGameTime()
+        );
+    }
+
+    @SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
+    public static void onBlockDrops(BlockDropsEvent event) {
+        MiningRollEngine.clearBreakContext();
+    }
+
+    public static int resolvePoolRolls(int baseRolls, LootContext context) {
+        return MiningRollEngine.resolvePoolRolls(baseRolls, context);
+    }
+
+    public static Consumer<ItemStack> decorateDropConsumer(Consumer<ItemStack> downstream, LootContext context) {
+        return MiningRollEngine.decorateDropConsumer(downstream, context);
     }
 }

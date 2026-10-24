@@ -266,6 +266,22 @@ public class ExosuitMK1 extends Item implements Equipable {
     @EventBusSubscriber(modid = CreateCybernetics.MODID, bus = EventBusSubscriber.Bus.GAME)
     public static final class HookServer {
         @SubscribeEvent
+        public static void onEquipmentChange(net.neoforged.neoforge.event.entity.living.LivingEquipmentChangeEvent event) {
+            if (event.getSlot() != EquipmentSlot.CHEST) return;
+            if (!(event.getEntity() instanceof Player player)) return;
+            if (player.level().isClientSide()) return;
+
+            ItemStack to = event.getTo();
+            if (to.getItem() instanceof ExosuitMK1 exosuit) {
+                player.getPersistentData().putBoolean(PKEY_WORN, true);
+                exosuit.onEquipped(player, to);
+            } else if (event.getFrom().getItem() instanceof ExosuitMK1 || player.getPersistentData().getBoolean(PKEY_WORN)) {
+                player.getPersistentData().remove(PKEY_WORN);
+                onRemovedAny(player);
+            }
+        }
+
+        @SubscribeEvent
         public static void onPlayerTick(PlayerTickEvent.Post event) {
             Player player = event.getEntity();
             if (player.level().isClientSide()) return;
@@ -290,19 +306,21 @@ public class ExosuitMK1 extends Item implements Equipable {
     private static void tickCommon(Player player) {
         ItemStack chest = player.getItemBySlot(EquipmentSlot.CHEST);
         boolean wearingNow = chest.getItem() instanceof ExosuitMK1;
-        boolean woreLast = player.getPersistentData().getBoolean(PKEY_WORN);
+        if (!wearingNow) {
+            if (player.getPersistentData().getBoolean(PKEY_WORN)) {
+                player.getPersistentData().remove(PKEY_WORN);
+                onRemovedAny(player);
+            }
+            return;
+        }
 
-        if (wearingNow && !woreLast) {
+        boolean woreLast = player.getPersistentData().getBoolean(PKEY_WORN);
+        if (!woreLast) {
+            player.getPersistentData().putBoolean(PKEY_WORN, true);
             ((ExosuitMK1) chest.getItem()).onEquipped(player, chest);
         }
-        if (!wearingNow && woreLast) {
-            onRemovedAny(player);
-        }
-        if (wearingNow) {
-            ((ExosuitMK1) chest.getItem()).onWornTick(player, chest);
-        }
 
-        player.getPersistentData().putBoolean(PKEY_WORN, wearingNow);
+        ((ExosuitMK1) chest.getItem()).onWornTick(player, chest);
     }
 
     private static void onRemovedAny(Player player) {

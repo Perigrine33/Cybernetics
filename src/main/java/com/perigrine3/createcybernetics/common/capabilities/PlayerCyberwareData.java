@@ -140,6 +140,60 @@ public class PlayerCyberwareData implements ICyberwareData {
     private int cyberdeckRamRegenTicks = 0;
     private int cyberdeckMaxRam = -1;
 
+    private int loadoutVersion = 1;
+    private int chipwareVersion = 1;
+    private transient com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile cachedProfile;
+    private transient com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile lastDispatchedProfile;
+    private transient int lastMovementBitmask = -1;
+    private transient com.perigrine3.createcybernetics.event.custom.CyberwarePlayerMovementStateEvent.MovementSnapshot lastMovementSnapshot;
+
+    public int getLoadoutVersion() {
+        return loadoutVersion;
+    }
+
+    public void incrementLoadoutVersion() {
+        loadoutVersion++;
+        cachedProfile = null;
+    }
+
+    public int getChipwareVersion() {
+        return chipwareVersion;
+    }
+
+    public void incrementChipwareVersion() {
+        chipwareVersion++;
+        cachedProfile = null;
+    }
+
+    public com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile getCachedProfile() {
+        return cachedProfile;
+    }
+
+    public void setCachedProfile(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile profile) {
+        this.cachedProfile = profile;
+    }
+
+    public com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile getLastDispatchedProfile() {
+        return lastDispatchedProfile;
+    }
+
+    public void setLastDispatchedProfile(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile profile) {
+        this.lastDispatchedProfile = profile;
+    }
+
+    public int getLastMovementBitmask() {
+        return lastMovementBitmask;
+    }
+
+    public com.perigrine3.createcybernetics.event.custom.CyberwarePlayerMovementStateEvent.MovementSnapshot getLastMovementSnapshot() {
+        return lastMovementSnapshot;
+    }
+
+    public void setLastMovementState(int bitmask, com.perigrine3.createcybernetics.event.custom.CyberwarePlayerMovementStateEvent.MovementSnapshot snapshot) {
+        this.lastMovementBitmask = bitmask;
+        this.lastMovementSnapshot = snapshot;
+    }
+
     public PlayerCyberwareData() {
         for (CyberwareSlot slot : CyberwareSlot.values()) {
             slots.put(slot, new InstalledCyberware[slot.size]);
@@ -210,6 +264,7 @@ public class PlayerCyberwareData implements ICyberwareData {
         }
 
         refreshLegacyHumanitySnapshot();
+        incrementLoadoutVersion();
         dirty = true;
     }
 
@@ -228,6 +283,7 @@ public class PlayerCyberwareData implements ICyberwareData {
         }
 
         refreshLegacyHumanitySnapshot();
+        incrementLoadoutVersion();
         dirty = true;
         return old;
     }
@@ -285,8 +341,9 @@ public class PlayerCyberwareData implements ICyberwareData {
             return;
         }
 
-        HumanityAttributeModifiers.setBonus(player, key, bonus);
-        dirty = true;
+        if (HumanityAttributeModifiers.setBonus(player, key, bonus)) {
+            dirty = true;
+        }
     }
 
     public void clearHumanityBonus(Player player, String key) {
@@ -295,8 +352,9 @@ public class PlayerCyberwareData implements ICyberwareData {
             return;
         }
 
-        HumanityAttributeModifiers.clearBonus(player, key);
-        dirty = true;
+        if (HumanityAttributeModifiers.clearBonus(player, key)) {
+            dirty = true;
+        }
     }
 
     public void setHumanityPenalty(String key, int penalty) {
@@ -532,16 +590,22 @@ public class PlayerCyberwareData implements ICyberwareData {
         ItemStack current = getChipwareStack(slot);
 
         if (stack == null || stack.isEmpty()) {
-            chipwareInv[slot] = ItemStack.EMPTY;
-            setChipwareQuickhackFired(slot, false);
-            dirty = true;
+            if (!current.isEmpty()) {
+                chipwareInv[slot] = ItemStack.EMPTY;
+                setChipwareQuickhackFired(slot, false);
+                incrementChipwareVersion();
+                dirty = true;
+            }
             return;
         }
 
         if (!stack.is(ModTags.Items.DATA_SHARDS)) {
-            chipwareInv[slot] = ItemStack.EMPTY;
-            setChipwareQuickhackFired(slot, false);
-            dirty = true;
+            if (!current.isEmpty()) {
+                chipwareInv[slot] = ItemStack.EMPTY;
+                setChipwareQuickhackFired(slot, false);
+                incrementChipwareVersion();
+                dirty = true;
+            }
             return;
         }
 
@@ -554,6 +618,7 @@ public class PlayerCyberwareData implements ICyberwareData {
 
         if (!sameStack) {
             setChipwareQuickhackFired(slot, false);
+            incrementChipwareVersion();
         }
 
         dirty = true;
@@ -582,28 +647,43 @@ public class PlayerCyberwareData implements ICyberwareData {
         }
 
         chipwareQuickhackFiredMask = 0;
+        incrementChipwareVersion();
         dirty = true;
     }
 
     public boolean hasChipwareShard(TagKey<Item> tag) {
+        return getChipwareShardCount(tag) > 0;
+    }
+
+    public int getChipwareShardCount(TagKey<Item> tag) {
+        if (tag == null) return 0;
+
+        int count = 0;
         for (int i = 0; i < CHIPWARE_SLOT_COUNT; i++) {
             ItemStack st = getChipwareStack(i);
-            if (!st.isEmpty() && st.is(tag)) return true;
+            if (!st.isEmpty() && st.is(tag)) {
+                count++;
+            }
         }
-        return false;
+        return count;
     }
 
     public boolean hasChipwareShardExact(Item shardItem) {
-        if (shardItem == null) return false;
+        return getChipwareShardExactCount(shardItem) > 0;
+    }
 
+    public int getChipwareShardExactCount(Item shardItem) {
+        if (shardItem == null) return 0;
+
+        int count = 0;
         for (int i = 0; i < CHIPWARE_SLOT_COUNT; i++) {
             ItemStack st = getChipwareStack(i);
             if (!st.isEmpty() && st.is(shardItem)) {
-                return true;
+                count++;
             }
         }
 
-        return false;
+        return count;
     }
 
     /* ---------------- CYBERDECK QUICKHACK INVENTORY (4 SLOTS) ---------------- */
@@ -747,6 +827,7 @@ public class PlayerCyberwareData implements ICyberwareData {
 
         if (arr[index] != value) {
             arr[index] = value;
+            incrementLoadoutVersion();
             dirty = true;
         }
     }
@@ -1405,6 +1486,8 @@ public class PlayerCyberwareData implements ICyberwareData {
         cyberdeckRamRegenTicks = 0;
         neuropozyneApplyCount = 0;
 
+        incrementLoadoutVersion();
+        incrementChipwareVersion();
         dirty = true;
     }
 
@@ -1682,6 +1765,7 @@ public class PlayerCyberwareData implements ICyberwareData {
         }
 
         chipwareQuickhackFiredMask = 0;
+        incrementChipwareVersion();
         dirty = true;
     }
 
@@ -1780,6 +1864,7 @@ public class PlayerCyberwareData implements ICyberwareData {
         }
 
         refreshLegacyHumanitySnapshot();
+        incrementLoadoutVersion();
         dirty = true;
     }
 
@@ -1994,6 +2079,21 @@ public class PlayerCyberwareData implements ICyberwareData {
     }
 
     public int getTotalEnergyCapacity(Player player) {
+        com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile profile =
+                com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager.getProfile(player, this);
+        if (profile != null) {
+            if (profile.energyNodes().isEmpty()) {
+                return 0;
+            }
+            int total = 0;
+            for (com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.InstalledSlotRef ref : profile.energyNodes()) {
+                if (!CyberwareDurabilityManager.isFunctional(player, ref.cyberware())) continue;
+                int cap = ref.item().getEnergyCapacity(player, ref.stack(), ref.slot());
+                if (cap > 0) total += cap;
+            }
+            return Math.max(0, total);
+        }
+
         int total = 0;
 
         for (var entry : slots.entrySet()) {
@@ -2515,6 +2615,8 @@ public class PlayerCyberwareData implements ICyberwareData {
                 ? Math.max(0, tag.getInt(NBT_COPERNICUS_OXYGEN))
                 : 0;
 
+        incrementLoadoutVersion();
+        incrementChipwareVersion();
         dirty = false;
     }
 

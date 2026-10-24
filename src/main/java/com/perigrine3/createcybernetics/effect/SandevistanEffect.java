@@ -47,6 +47,19 @@ public class SandevistanEffect extends MobEffect {
     }
 
     @SubscribeEvent
+    public static void onEffectAdded(MobEffectEvent.Added event) {
+        LivingEntity entity = event.getEntity();
+        if (entity.level().isClientSide()) return;
+
+        var inst = event.getEffectInstance();
+        if (inst == null) return;
+
+        if (isSandevistan(inst.getEffect().value())) {
+            applyAll(entity);
+        }
+    }
+
+    @SubscribeEvent
     public static void onEffectRemoved(MobEffectEvent.Remove event) {
         LivingEntity entity = event.getEntity();
         if (entity.level().isClientSide()) return;
@@ -56,6 +69,9 @@ public class SandevistanEffect extends MobEffect {
 
         if (isSandevistan(inst.getEffect().value())) {
             removeAll(entity);
+            if (entity instanceof com.perigrine3.createcybernetics.api.ISandevistanTrailState trailState) {
+                trailState.createcybernetics$setSandevistanTrailActive(false);
+            }
         }
     }
 
@@ -69,16 +85,18 @@ public class SandevistanEffect extends MobEffect {
 
         if (isSandevistan(inst.getEffect().value())) {
             removeAll(entity);
+            if (entity instanceof com.perigrine3.createcybernetics.api.ISandevistanTrailState trailState) {
+                trailState.createcybernetics$setSandevistanTrailActive(false);
+            }
         }
     }
 
     @SubscribeEvent
-    public static void onEntityTick(EntityTickEvent.Post event) {
-        if (!(event.getEntity() instanceof LivingEntity entity)) return;
-        if (entity.level().isClientSide()) return;
-
-        if (!entity.hasEffect(ModEffects.SANDEVISTAN_EFFECT)) {
-            removeAll(entity);
+    public static void onCyberwareStateChange(com.perigrine3.createcybernetics.event.custom.CyberwareStateChangeEvent event) {
+        var player = event.getPlayer();
+        if (player == null || player.level().isClientSide()) return;
+        if (!player.hasEffect(ModEffects.SANDEVISTAN_EFFECT)) {
+            removeAll(player);
         }
     }
 }

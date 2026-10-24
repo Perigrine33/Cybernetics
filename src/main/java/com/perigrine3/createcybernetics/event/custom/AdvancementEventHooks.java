@@ -152,34 +152,42 @@ public final class AdvancementEventHooks {
     }
 
     @SubscribeEvent
-    public static void onServerTick(ServerTickEvent.Post event) {
-        for (ServerPlayer player : event.getServer().getPlayerList().getPlayers()) {
-            if (!player.hasData(ModAttachments.CYBERWARE)) continue;
-            PlayerCyberwareData data = player.getData(ModAttachments.CYBERWARE);
-            if (data == null) continue;
+    public static void onCyberwareStateChange(CyberwareStateChangeEvent event) {
+        if (!(event.getPlayer() instanceof ServerPlayer player)) return;
+        PlayerCyberwareData data = event.getData();
+        com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile profile = event.getCurrentProfile();
+        if (data == null || profile == null) return;
 
-            if (data.hasChipwareShardExact(ModItems.DATA_SHARD_RED.get())) {
-                ModCriteria.KUNG_FU.get().trigger(player);
-            }
+        if (data.hasChipwareShardExact(ModItems.DATA_SHARD_RED.get())) {
+            ModCriteria.KUNG_FU.get().trigger(player);
+        }
 
-            if (data.hasSpecificItem(ModItems.ARMUPGRADES_ARMCANNON.get())) {
-                ModCriteria.UPGRADED.get().trigger(player);
-            }
+        if (profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.ARM_CANNON)) {
+            ModCriteria.UPGRADED.get().trigger(player);
+        }
 
-            if (data.hasSpecificItem(ModItems.ARMUPGRADES_CLAWS.get())) {
-                ModCriteria.SNIKT.get().trigger(player);
-            }
+        if (profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.RETRACTABLE_CLAWS)) {
+            ModCriteria.SNIKT.get().trigger(player);
+        }
 
-            if (data.hasSpecificItem(ModItems.BRAINUPGRADES_CYBERBRAIN.get())) {
-                ModCriteria.COGITO_ERGO_SUM.get().trigger(player);
-            }
+        if (profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.CYBERBRAIN)) {
+            ModCriteria.COGITO_ERGO_SUM.get().trigger(player);
+        }
 
-            if (data.hasSpecificItem(ModItems.SKINUPGRADES_FACEPLATE.get())) {
-                ModCriteria.BODYSNATCHER.get().trigger(player);
-                if (data.hasSpecificItem(ModItems.SKINUPGRADES_CHROMATOPHORES.get())) {
-                    ModCriteria.RIGHT_BEHIND_YOU.get().trigger(player);
-                }
+        if (profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.INTERCHANGEABLE_FACEPLATE)) {
+            ModCriteria.BODYSNATCHER.get().trigger(player);
+            if (profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.CHROMATOPHORES)) {
+                ModCriteria.RIGHT_BEHIND_YOU.get().trigger(player);
             }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onChipwareShardChange(CyberwareChipwareShardChangeEvent event) {
+        if (!(event.getPlayer() instanceof ServerPlayer player)) return;
+        PlayerCyberwareData data = event.getData();
+        if (data != null && data.hasChipwareShardExact(ModItems.DATA_SHARD_RED.get())) {
+            ModCriteria.KUNG_FU.get().trigger(player);
         }
     }
 

@@ -114,6 +114,11 @@ public class OxygenTankItem extends Item implements ICyberwareItem {
             Player player = event.getEntity();
             if (player.level().isClientSide) return;
 
+            var profile = com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager.getProfile(player);
+            if (profile == null || !profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.OXYGEN_TANK)) {
+                return;
+            }
+
             int poweredTankCount = getPoweredOxygenTankCount(player);
             if (poweredTankCount <= 0) {
                 resetOxygenTankTracking(player);

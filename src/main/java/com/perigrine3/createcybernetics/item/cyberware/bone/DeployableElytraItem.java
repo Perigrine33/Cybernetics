@@ -109,10 +109,26 @@ public class DeployableElytraItem extends Item implements ICyberwareItem {
     public static final class CaelusServerSync {
 
         @SubscribeEvent
+        public static void onCyberwareStateChange(com.perigrine3.createcybernetics.event.custom.CyberwareStateChangeEvent event) {
+            Player player = event.getPlayer();
+            if (player == null || player.level().isClientSide() || !CaelusCompat.isLoaded()) return;
+            var profile = event.getCurrentProfile();
+            if (profile == null || !profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.DEPLOYABLE_ELYTRA)) {
+                CaelusCompat.removeFallFlyingModifier(player, CC_CAELUS_FLIGHT_ID);
+            }
+        }
+
+        @SubscribeEvent
         public static void onPlayerTick(PlayerTickEvent.Post event) {
             Player player = event.getEntity();
             if (player.level().isClientSide()) return;
             if (!CaelusCompat.isLoaded()) return;
+
+            var profile = com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager.getProfile(player);
+            if (profile == null || !profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.DEPLOYABLE_ELYTRA)) {
+                return;
+            }
+
             if (cc$hasRealChestElytra(player)) {
                 CaelusCompat.removeFallFlyingModifier(player, CC_CAELUS_FLIGHT_ID);
                 return;

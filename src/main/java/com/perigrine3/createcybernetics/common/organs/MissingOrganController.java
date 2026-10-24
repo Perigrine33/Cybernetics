@@ -57,7 +57,22 @@ public final class MissingOrganController {
     private static final String DEFAULTS_PATCHED = "cc_defaults_patched";
     private static final String FORCED_MAIN_ARM = "cc_forced_main_arm";
     private static final String ORIGINAL_MAIN_ARM = "cc_original_main_arm";
+    private static final String PENALTIES_ACTIVE = "cc_missing_organ_penalties_active";
 
+
+    private static void clearAllMissingOrganPenalties(Player player) {
+        applyOrRemoveModifier(player, Attributes.MOVEMENT_SPEED, NO_BONE_SPEED, false, 0);
+        applyOrRemoveModifier(player, Attributes.JUMP_STRENGTH, NO_BONE_JUMP, false, 0);
+        applyOrRemoveModifier(player, Attributes.MOVEMENT_SPEED, NO_MUSCLE_SPEED, false, 0);
+        applyOrRemoveModifier(player, Attributes.ATTACK_SPEED, NO_MUSCLE_ATTACK, false, 0);
+        applyOrRemoveModifier(player, Attributes.JUMP_STRENGTH, NO_MUSCLE_JUMP, false, 0);
+        applyOrRemoveModifier(player, Attributes.MOVEMENT_SPEED, NO_LEFT_LEG_SPEED, false, 0);
+        applyOrRemoveModifier(player, Attributes.MOVEMENT_SPEED, NO_RIGHT_LEG_SPEED, false, 0);
+        applyOrRemoveModifier(player, Attributes.JUMP_STRENGTH, NO_BOTH_LEGS_JUMP, false, 0);
+        player.getPersistentData().remove(NO_LUNGS_AIR);
+        clearProneLike(player);
+        updateMainArmForMissingArms(player, true, true);
+    }
 
     @SubscribeEvent
     public static void onPlayerTick(PlayerTickEvent.Post event) {
@@ -70,6 +85,17 @@ public final class MissingOrganController {
 
         PlayerCyberwareData data = player.getData(ModAttachments.CYBERWARE);
         if (data == null) return;
+
+        com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile profile =
+                com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager.getProfile(player, data);
+        if (profile != null && profile.allPrimaryOrgansFunctional() && !profile.hasGills()) {
+            if (player.getPersistentData().getBoolean(PENALTIES_ACTIVE)) {
+                clearAllMissingOrganPenalties(player);
+                player.getPersistentData().remove(PENALTIES_ACTIVE);
+            }
+            return;
+        }
+        player.getPersistentData().putBoolean(PENALTIES_ACTIVE, true);
 
 
 // Resolve organ presence

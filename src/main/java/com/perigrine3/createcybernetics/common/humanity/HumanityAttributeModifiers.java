@@ -147,17 +147,16 @@ public final class HumanityAttributeModifiers {
         );
     }
 
-    public static void setBonus(Player player, String key, int value) {
+    public static boolean setBonus(Player player, String key, int value) {
         if (player == null) {
-            return;
+            return false;
         }
 
         if (value <= 0) {
-            clearBonus(player, key);
-            return;
+            return clearBonus(player, key);
         }
 
-        CyberwareAttributeHelper.setPermanentModifier(
+        return CyberwareAttributeHelper.setPermanentModifier(
                 player,
                 ModAttributes.HUMANITY,
                 keyedId(BONUS_PREFIX, key),
@@ -166,29 +165,28 @@ public final class HumanityAttributeModifiers {
         );
     }
 
-    public static void clearBonus(Player player, String key) {
+    public static boolean clearBonus(Player player, String key) {
         if (player == null) {
-            return;
+            return false;
         }
 
-        CyberwareAttributeHelper.removePermanentModifier(
+        return CyberwareAttributeHelper.removePermanentModifier(
                 player,
                 ModAttributes.HUMANITY,
                 keyedId(BONUS_PREFIX, key)
         );
     }
 
-    public static void setPenalty(Player player, String key, int value) {
+    public static boolean setPenalty(Player player, String key, int value) {
         if (player == null) {
-            return;
+            return false;
         }
 
         if (value <= 0) {
-            clearPenalty(player, key);
-            return;
+            return clearPenalty(player, key);
         }
 
-        CyberwareAttributeHelper.setPermanentModifier(
+        return CyberwareAttributeHelper.setPermanentModifier(
                 player,
                 ModAttributes.HUMANITY,
                 keyedId(PENALTY_PREFIX, key),
@@ -197,12 +195,12 @@ public final class HumanityAttributeModifiers {
         );
     }
 
-    public static void clearPenalty(Player player, String key) {
+    public static boolean clearPenalty(Player player, String key) {
         if (player == null) {
-            return;
+            return false;
         }
 
-        CyberwareAttributeHelper.removePermanentModifier(
+        return CyberwareAttributeHelper.removePermanentModifier(
                 player,
                 ModAttributes.HUMANITY,
                 keyedId(PENALTY_PREFIX, key)

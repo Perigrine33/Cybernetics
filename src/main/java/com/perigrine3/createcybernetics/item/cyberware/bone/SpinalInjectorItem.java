@@ -504,26 +504,23 @@ public class SpinalInjectorItem extends Item implements ICyberwareItem {
     }
 
     private static boolean tryInjectFromAnyInstalled(ServerPlayer sp, PlayerCyberwareData data) {
-        for (var entry : data.getAll().entrySet()) {
-            CyberwareSlot slot = entry.getKey();
-            var arr = entry.getValue();
-            if (arr == null) continue;
+        var arr = data.getAll().get(CyberwareSlot.BONE);
+        if (arr == null) return false;
 
-            for (int i = 0; i < arr.length; i++) {
-                var inst = arr[i];
-                if (inst == null) continue;
+        for (int i = 0; i < arr.length; i++) {
+            var inst = arr[i];
+            if (inst == null) continue;
 
-                ItemStack st = inst.getItem();
-                if (st == null || st.isEmpty()) continue;
+            ItemStack st = inst.getItem();
+            if (st == null || st.isEmpty()) continue;
 
-                if (!data.isEnabled(slot, i)) {
-                    continue;
-                }
+            if (!data.isEnabled(CyberwareSlot.BONE, i)) {
+                continue;
+            }
 
-                if (st.getItem() instanceof SpinalInjectorItem) {
-                    if (tryInjectFromStack(sp, data, st)) {
-                        return true;
-                    }
+            if (st.getItem() instanceof SpinalInjectorItem) {
+                if (tryInjectFromStack(sp, data, st)) {
+                    return true;
                 }
             }
         }
@@ -543,6 +540,11 @@ public class SpinalInjectorItem extends Item implements ICyberwareItem {
             if (!sp.hasData(ModAttachments.CYBERWARE)) return;
             PlayerCyberwareData data = sp.getData(ModAttachments.CYBERWARE);
             if (data == null) return;
+
+            var profile = com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager.getProfile(sp, data);
+            if (profile == null || !profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.SPINAL_INJECTOR)) {
+                return;
+            }
 
             int cd = getCooldown(sp);
             if (cd > 0) {

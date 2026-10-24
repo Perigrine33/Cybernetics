@@ -145,11 +145,6 @@ public class CyberlegItem extends Item implements ICyberwareItem {
         onInstalled(entity);
     }
 
-    @Override
-    public void onTick(LivingEntity entity) {
-        ICyberwareItem.super.onTick(entity);
-    }
-
     @EventBusSubscriber(modid = CreateCybernetics.MODID, bus = EventBusSubscriber.Bus.GAME)
     public static final class PowerFailHooks {
         private PowerFailHooks() {}
@@ -159,6 +154,17 @@ public class CyberlegItem extends Item implements ICyberwareItem {
         private static final ResourceLocation UNPOWERED_LEG_JUMP =
                 ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "cyberleg_unpowered_jump");
 
+        @SubscribeEvent
+        public static void onCyberwareStateChange(com.perigrine3.createcybernetics.event.custom.CyberwareStateChangeEvent event) {
+            Player player = event.getPlayer();
+            if (player == null || player.level().isClientSide) return;
+            var profile = event.getCurrentProfile();
+            if (profile == null || !profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.CYBERLEG)) {
+                setOrClearModifier(player, Attributes.MOVEMENT_SPEED, UNPOWERED_LEG_SPEED, null);
+                setOrClearModifier(player, Attributes.JUMP_STRENGTH, UNPOWERED_LEG_JUMP, null);
+            }
+        }
+
         @SubscribeEvent(priority = EventPriority.HIGHEST)
         public static void onPlayerTick(PlayerTickEvent.Post event) {
             Player player = event.getEntity();
@@ -166,6 +172,11 @@ public class CyberlegItem extends Item implements ICyberwareItem {
 
             PlayerCyberwareData data = player.getData(ModAttachments.CYBERWARE);
             if (data == null) return;
+
+            var profile = com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager.getProfile(player, data);
+            if (profile != null && !profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.CYBERLEG)) {
+                return;
+            }
 
             boolean leftDead = isCyberlegUnpowered(player, data, CyberwareSlot.LLEG);
             boolean rightDead = isCyberlegUnpowered(player, data, CyberwareSlot.RLEG);

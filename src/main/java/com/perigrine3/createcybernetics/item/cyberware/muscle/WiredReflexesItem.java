@@ -108,8 +108,18 @@ public class WiredReflexesItem extends Item implements ICyberwareItem {
 
     @Override
     public void onTick(LivingEntity entity) {
-        if (entity.level().isClientSide) return;
-        entity.getPersistentData().putBoolean(NBT_INSTALLED, true);
+    }
+
+    @SubscribeEvent
+    public static void onCyberwareStateChange(com.perigrine3.createcybernetics.event.custom.CyberwareStateChangeEvent event) {
+        var player = event.getPlayer();
+        if (player.level().isClientSide) return;
+        var profile = event.getCurrentProfile();
+        if (profile != null && profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.WIRED_REFLEXES)) {
+            player.getPersistentData().putBoolean(NBT_INSTALLED, true);
+        } else {
+            player.getPersistentData().remove(NBT_INSTALLED);
+        }
     }
 
     @SubscribeEvent

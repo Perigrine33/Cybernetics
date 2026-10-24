@@ -87,31 +87,47 @@ public class PolarBearFurItem extends Item implements ICyberwareItem {
     public void onRemoved(LivingEntity entity) {
     }
 
-    @Override
-    public void onTick(LivingEntity entity) {
-    }
-
     @EventBusSubscriber(modid = CreateCybernetics.MODID)
     public static final class PolarBearFurFreezingImmunity {
 
         private PolarBearFurFreezingImmunity() {}
 
         @SubscribeEvent
+        public static void onCyberwareStateChange(com.perigrine3.createcybernetics.event.custom.CyberwareStateChangeEvent event) {
+            Player player = event.getPlayer();
+            if (player == null || player.level().isClientSide) return;
+
+            var profile = event.getCurrentProfile();
+            boolean installed = profile != null
+                    && profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.POLAR_BEAR_FUR)
+                    && hasPolarBearFurInstalled(player);
+
+            if (installed) {
+                if (profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.BLUBBER)) {
+                    ColdSweatCompat.applyColdResistance(player, 1.0);
+                    ColdSweatCompat.applyColdDampening(player, 0.0);
+                } else {
+                    ColdSweatCompat.applyColdResistance(player, 0.60);
+                    ColdSweatCompat.applyColdDampening(player, 0.30);
+                }
+            } else if (profile == null || !profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.BLUBBER)) {
+                ColdSweatCompat.clearCold(player);
+            }
+        }
+
+        @SubscribeEvent
         public static void onPlayerTickPost(PlayerTickEvent.Post event) {
             Player player = event.getEntity();
             if (player.level().isClientSide) return;
+            if (player.getTicksFrozen() <= 0 && !player.isFullyFrozen()) return;
 
-            boolean installed = hasPolarBearFurInstalled(player);
-
-            if (installed && (player.getTicksFrozen() > 0 || player.isFullyFrozen())) {
-                player.setTicksFrozen(0);
+            var profile = com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager.getProfile(player);
+            if (profile == null || !profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.POLAR_BEAR_FUR)) {
+                return;
             }
 
-            if (installed) {
-                ColdSweatCompat.applyColdResistance(player, 0.60);
-                ColdSweatCompat.applyColdDampening(player, 0.30);
-            } else {
-                ColdSweatCompat.clearCold(player);
+            if (hasPolarBearFurInstalled(player)) {
+                player.setTicksFrozen(0);
             }
         }
 

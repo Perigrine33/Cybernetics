@@ -100,6 +100,9 @@ public class PneumaticCalvesItem extends Item implements ICyberwareItem {
     @Override
     public void onTick(LivingEntity entity) {
         if (!(entity instanceof Player player)) return;
+        if (player.level().isClientSide) return;
+        var existing = player.getEffect(ModEffects.PNEUMATIC_CALVES_EFFECT);
+        if (existing != null && existing.getDuration() > 20) return;
         maintainFor(player);
     }
 
@@ -213,8 +216,27 @@ public class PneumaticCalvesItem extends Item implements ICyberwareItem {
         private Events() {}
 
         @SubscribeEvent
-        public static void onPlayerTick(PlayerTickEvent.Post event) {
-            maintainFor(event.getEntity());
+        public static void onCyberwareStateChange(com.perigrine3.createcybernetics.event.custom.CyberwareStateChangeEvent event) {
+            Player player = event.getPlayer();
+            if (player == null || player.level().isClientSide) return;
+            var profile = event.getCurrentProfile();
+            if (profile == null || !profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.PNEUMATIC_CALVES)) {
+                cleanup(player);
+                return;
+            }
+            maintainFor(player);
+        }
+
+        @SubscribeEvent
+        public static void onMovementStateChange(com.perigrine3.createcybernetics.event.custom.CyberwarePlayerMovementStateEvent event) {
+            Player player = event.getPlayer();
+            if (player == null || player.level().isClientSide) return;
+            if (event.getPreviousState().sprinting() == event.getCurrentState().sprinting()) return;
+            var profile = com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager.getProfile(player, event.getData());
+            if (profile == null || !profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.PNEUMATIC_CALVES)) {
+                return;
+            }
+            maintainFor(player);
         }
     }
 }
