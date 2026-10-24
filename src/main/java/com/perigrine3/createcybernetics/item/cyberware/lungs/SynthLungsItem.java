@@ -109,16 +109,11 @@ public class SynthLungsItem extends Item implements ICyberwareItem {
     }
 
     @SubscribeEvent
-    public static void onPlayerTick(PlayerTickEvent.Post event) {
-        if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        if (!player.hasData(ModAttachments.CYBERWARE)) return;
-
-        if (player.tickCount % 20 != 0) return;
-
-        PlayerCyberwareData data = player.getData(ModAttachments.CYBERWARE);
-        if (data == null) return;
-
-        boolean hasSynthLungs = hasSynthLungsInstalled(data);
+    public static void onCyberwareStateChange(com.perigrine3.createcybernetics.event.custom.CyberwareStateChangeEvent event) {
+        if (!(event.getPlayer() instanceof ServerPlayer player)) return;
+        var profile = event.getCurrentProfile();
+        boolean hasSynthLungs = profile != null
+                && profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.SYNTH_LUNGS);
 
         if (hasSynthLungs) {
             CyberwareAttributeHelper.applyModifier(player, SYNTHLUNGS_BREATH_MODIFIER);

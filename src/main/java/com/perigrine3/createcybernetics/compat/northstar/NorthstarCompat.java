@@ -193,11 +193,12 @@ public final class NorthstarCompat {
                 oxygenatedEnvironment = !player.isUnderWater();
             }
 
+            int previousOxygen = data.getCopernicusOxygen();
             data.setCopernicusOxygenatedEnvironment(oxygenatedEnvironment);
 
             data.tickCopernicusOxygen(oxygenatedEnvironment, COPERNICUS_DEPLETION_PER_SECOND, COPERNICUS_RECHARGE_PER_SECOND, COPERNICUS_OXYGEN_MAX_DISPLAY);
 
-            if (player instanceof ServerPlayer sp) {
+            if (player instanceof ServerPlayer sp && data.getCopernicusOxygen() != previousOxygen) {
                 PacketDistributor.sendToPlayer(sp, new CopernicusOxygenSyncPayload(data.getCopernicusOxygen()));
             }
 

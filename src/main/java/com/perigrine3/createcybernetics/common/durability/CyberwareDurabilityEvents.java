@@ -1,5 +1,6 @@
 package com.perigrine3.createcybernetics.common.durability;
 
+import com.perigrine3.createcybernetics.common.scheduling.StaggeredTickScheduler;
 import com.perigrine3.createcybernetics.ConfigValues;
 import com.perigrine3.createcybernetics.CreateCybernetics;
 import com.perigrine3.createcybernetics.api.*;
@@ -76,9 +77,12 @@ public final class CyberwareDurabilityEvents {
     @SubscribeEvent
     public static void onPlayerTick(PlayerTickEvent.Post event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        if (player.tickCount % 20 != 0) return;
+        if (!StaggeredTickScheduler.shouldRun(player, 20, StaggeredTickScheduler.TickPhase.DURABILITY_PASSIVE)) {
+            return;
+        }
 
         PlayerCyberwareData data = player.getData(ModAttachments.CYBERWARE);
+        if (data == null) return;
 
         repairFromRegeneration(player, data);
         applyEmpBatteryDamage(player, data);
@@ -213,14 +217,33 @@ public final class CyberwareDurabilityEvents {
     }
 
     private static void applyEmpBatteryDamage(ServerPlayer player, PlayerCyberwareData data) {
-        boolean hasEmp = player.getActiveEffects().stream().anyMatch(instance -> instance.getEffect().unwrapKey().map(key -> key.location().equals(EMP_EFFECT_ID)).orElse(false));
-        if (!hasEmp) return;
+        var profile = com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager.getProfile(player, data);
+        if (profile != null && profile.batterySlots().isEmpty()) return;
 
-        var effect = player.getActiveEffects().stream().filter(instance -> instance.getEffect().unwrapKey().map(key -> key.location().equals(EMP_EFFECT_ID)).orElse(false)).findFirst().orElse(null);
-        int effectLevel = effect == null ? 1 : effect.getAmplifier() + 1;
+        var activeEffects = player.getActiveEffects();
+        if (activeEffects.isEmpty()) return;
+
+        net.minecraft.world.effect.MobEffectInstance empEffect = null;
+        for (var instance : activeEffects) {
+            var keyOpt = instance.getEffect().unwrapKey();
+            if (keyOpt.isPresent() && keyOpt.get().location().equals(EMP_EFFECT_ID)) {
+                empEffect = instance;
+                break;
+            }
+        }
+        if (empEffect == null) return;
+
+        int effectLevel = empEffect.getAmplifier() + 1;
         int amount = ConfigValues.BATTERY_EMP_DAMAGE_PER_SECOND * effectLevel;
 
         if (amount <= 0) return;
+
+        if (profile != null) {
+            for (var ref : profile.batterySlots()) {
+                CyberwareDurabilityManager.damage(player, data, ref, CyberwareDegradationCause.EMP, amount);
+            }
+            return;
+        }
 
         for (var entry : data.getAll().entrySet()) {
             InstalledCyberware[] arr = entry.getValue();
@@ -238,7 +261,35 @@ public final class CyberwareDurabilityEvents {
         if (ConfigValues.BATTERY_PASSIVE_DAMAGE <= 0) return;
         if (ConfigValues.BATTERY_PASSIVE_DAMAGE_INTERVAL <= 0) return;
 
+        var profile = com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager.getProfile(player, data);
+        if (profile != null && profile.batterySlots().isEmpty()) return;
+
         long gameTime = player.level().getGameTime();
+
+        if (profile != null) {
+            for (var ref : profile.batterySlots()) {
+                InstalledCyberware installed = ref;
+                if (!CyberwareDurabilityManager.usesDurability(installed)) continue;
+
+                long previous = installed.getLastPassiveDurabilityTick();
+
+                if (previous <= 0L) {
+                    installed.setLastPassiveDurabilityTick(gameTime);
+                    data.setDirty();
+                    continue;
+                }
+
+                long elapsed = gameTime - previous;
+                if (elapsed < ConfigValues.BATTERY_PASSIVE_DAMAGE_INTERVAL) continue;
+
+                long intervals = elapsed / ConfigValues.BATTERY_PASSIVE_DAMAGE_INTERVAL;
+                int damage = Mth.clamp((int) intervals * ConfigValues.BATTERY_PASSIVE_DAMAGE, 0, Integer.MAX_VALUE);
+
+                installed.setLastPassiveDurabilityTick(previous + intervals * ConfigValues.BATTERY_PASSIVE_DAMAGE_INTERVAL);
+                CyberwareDurabilityManager.damage(player, data, installed, CyberwareDegradationCause.PASSIVE_AGING, damage);
+            }
+            return;
+        }
 
         for (var entry : data.getAll().entrySet()) {
             InstalledCyberware[] arr = entry.getValue();

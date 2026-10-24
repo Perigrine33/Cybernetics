@@ -124,26 +124,13 @@ public class ElectrocyteTissueItem extends Item implements ICyberwareItem {
         }
 
         @SubscribeEvent
-        public static void onPlayerTick(PlayerTickEvent.Post event) {
-            Player player = event.getEntity();
+        public static void onLivingDamaged(net.neoforged.neoforge.event.entity.living.LivingDamageEvent.Post event) {
+            LivingEntity entity = event.getEntity();
+            if (!(entity instanceof Player player)) return;
             if (!(player.level() instanceof ServerLevel level)) return;
+            if (event.getNewDamage() <= 0.0F) return;
 
-            UUID id = player.getUUID();
-
-            int previousHurtTime = LAST_HURT_TIME.getOrDefault(id, 0);
-            int currentHurtTime = player.hurtTime;
-            LAST_HURT_TIME.put(id, currentHurtTime);
-
-            float previousHealth = LAST_HEALTH.getOrDefault(id, player.getHealth());
-            float currentHealth = player.getHealth();
-            LAST_HEALTH.put(id, currentHealth);
-
-            boolean hurtTimeStarted = currentHurtTime > 0 && previousHurtTime <= 0;
-            boolean healthDropped = currentHealth < previousHealth;
-
-            if (!hurtTimeStarted && !healthDropped) return;
-
-            tryTrigger(level, player, player.damageSources().generic());
+            tryTrigger(level, player, event.getSource());
         }
 
         @SubscribeEvent

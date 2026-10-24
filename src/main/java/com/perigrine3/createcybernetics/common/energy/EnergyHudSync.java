@@ -1,5 +1,7 @@
 package com.perigrine3.createcybernetics.common.energy;
 
+import com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager;
+import com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile;
 import com.perigrine3.createcybernetics.CreateCybernetics;
 import com.perigrine3.createcybernetics.common.capabilities.ModAttachments;
 import com.perigrine3.createcybernetics.common.capabilities.PlayerCyberwareData;
@@ -34,7 +36,19 @@ public final class EnergyHudSync {
         PlayerCyberwareData data = sp.getData(ModAttachments.CYBERWARE);
         if (data == null) return;
 
+        CyberwareLoadoutProfile profile = CyberwareProfileManager.getProfile(sp, data);
         int stored = data.getEnergyStored();
+        if (profile != null && !profile.hasEnergyWork() && stored == 0) {
+            Mini prev = LAST.get(sp.getUUID());
+            if (prev != null && prev.stored() == 0 && prev.cap() == 0 && prev.net() == 0) {
+                return;
+            }
+            Mini zero = new Mini(0, 0, 0);
+            LAST.put(sp.getUUID(), zero);
+            PacketDistributor.sendToPlayer(sp, new EnergyHudSnapshotPayload(0, 0, 0));
+            return;
+        }
+
         int cap = data.getTotalEnergyCapacity(sp);
 
         int net = 0;

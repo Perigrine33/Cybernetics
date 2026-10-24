@@ -102,10 +102,6 @@ public class RetractableClawsItem extends Item implements ICyberwareItem {
         return Set.of();
     }
 
-    @Override
-    public void onTick(LivingEntity entity) {
-    }
-
     @EventBusSubscriber(modid = CreateCybernetics.MODID, bus = EventBusSubscriber.Bus.GAME)
     public static final class ServerHandler {
 
@@ -113,18 +109,42 @@ public class RetractableClawsItem extends Item implements ICyberwareItem {
         private static final Map<UUID, Boolean> LAST_RIGHT = new HashMap<>();
 
         @SubscribeEvent
-        public static void onPlayerTick(PlayerTickEvent.Post event) {
-            Player player = event.getEntity();
-            if (player.level().isClientSide) return;
+        public static void onCyberwareStateChange(com.perigrine3.createcybernetics.event.custom.CyberwareStateChangeEvent event) {
+            syncClaws(event.getPlayer(), event.getData(), event.getCurrentProfile());
+        }
 
+        @SubscribeEvent
+        public static void onEquipmentChange(net.neoforged.neoforge.event.entity.living.LivingEquipmentChangeEvent event) {
+            if (!(event.getEntity() instanceof Player player)) return;
+            if (player.level().isClientSide) return;
+            if (event.getSlot() != EquipmentSlot.MAINHAND && event.getSlot() != EquipmentSlot.OFFHAND) return;
             if (!player.hasData(ModAttachments.CYBERWARE)) return;
             PlayerCyberwareData data = player.getData(ModAttachments.CYBERWARE);
-            if (data == null) return;
+            var profile = com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager.getProfile(player, data);
+            if (profile == null || !profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.RETRACTABLE_CLAWS)) {
+                return;
+            }
+            syncClaws(player, data, profile);
+        }
+
+        private static void syncClaws(
+                Player player,
+                PlayerCyberwareData data,
+                com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile profile
+        ) {
+            if (player == null || player.level().isClientSide) return;
+
+            UUID id = player.getUUID();
+            if (data == null || (profile != null && !profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.RETRACTABLE_CLAWS))) {
+                LAST_LEFT.remove(id);
+                LAST_RIGHT.remove(id);
+                CyberwareAttributeHelper.removeModifier(player, "claws_attack1");
+                CyberwareAttributeHelper.removeModifier(player, "claws_attack2");
+                return;
+            }
 
             boolean leftEnabled = isLeftEnabled(data);
             boolean rightEnabled = isRightEnabled(data);
-
-            UUID id = player.getUUID();
 
             boolean prevLeft = LAST_LEFT.getOrDefault(id, false);
             if (leftEnabled != prevLeft) {

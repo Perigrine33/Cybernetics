@@ -8,6 +8,7 @@ import net.minecraft.data.PackOutput;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.block.Blocks;
+import net.neoforged.neoforge.common.Tags;
 import net.neoforged.neoforge.common.data.BlockTagsProvider;
 import net.neoforged.neoforge.common.data.ExistingFileHelper;
 import org.jetbrains.annotations.Nullable;
@@ -114,5 +115,8 @@ public class ModBlockTagProvider extends BlockTagsProvider {
         tag(ModTags.Blocks.C_TITANIUM)
                 .add(ModBlocks.TITANIUMORE_BLOCK.get())
                 .add(ModBlocks.DEEPSLATE_TITANIUMORE_BLOCK.get());
+
+        tag(Tags.Blocks.ORES)
+                .addTag(ModTags.Blocks.C_TITANIUM);
     }
 }

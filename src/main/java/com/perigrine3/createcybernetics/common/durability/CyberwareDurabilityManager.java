@@ -124,6 +124,18 @@ public final class CyberwareDurabilityManager {
 
         if (previousDurability > 0 && currentDurability <= 0) {
             cyberwareItem.onDurabilityBroken(entity, stack, slot, cause);
+            if (data instanceof PlayerCyberwareData playerData) {
+                playerData.incrementLoadoutVersion();
+                if (entity instanceof net.minecraft.world.entity.player.Player player) {
+                    com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager.synchronizeAndPublish(
+                            player,
+                            playerData,
+                            com.perigrine3.createcybernetics.event.custom.CyberwareStateChangeEvent.ChangeReason.DURABILITY_THRESHOLD_CROSSED
+                    );
+                }
+            } else if (data instanceof com.perigrine3.createcybernetics.common.capabilities.EntityCyberwareData entityData) {
+                entityData.incrementLoadoutVersion();
+            }
         }
 
         data.setDirty();
@@ -146,6 +158,16 @@ public final class CyberwareDurabilityManager {
         if (repaired <= 0) return 0;
 
         cyberwareItem.onDurabilityRepaired(entity, stack, installed.getSlot(), previousDurability, currentDurability);
+        if (previousDurability <= 0 && currentDurability > 0) {
+            data.incrementLoadoutVersion();
+            if (entity instanceof net.minecraft.world.entity.player.Player player) {
+                com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager.synchronizeAndPublish(
+                        player,
+                        data,
+                        com.perigrine3.createcybernetics.event.custom.CyberwareStateChangeEvent.ChangeReason.DURABILITY_THRESHOLD_CROSSED
+                );
+            }
+        }
         data.setDirty();
 
         return repaired;
@@ -224,6 +246,29 @@ public final class CyberwareDurabilityManager {
         if (entity == null || data == null || amount <= 0) return;
         if (ConfigValues.BATTERY_ENERGY_RECEIVED_PER_DAMAGE <= 0) return;
 
+        com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile profile =
+                com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager.getProfile(
+                        entity instanceof net.minecraft.world.entity.player.Player p ? p : null,
+                        data
+                );
+        if (profile != null) {
+            java.util.List<InstalledCyberware> batteries = profile.batterySlots();
+            if (batteries.isEmpty()) return;
+
+            long threshold = ConfigValues.BATTERY_ENERGY_RECEIVED_PER_DAMAGE;
+            for (InstalledCyberware installed : batteries) {
+                if (!usesDurability(installed)) continue;
+
+                installed.addEnergyReceivedSinceDurabilityDamage(amount);
+                int durabilityDamage = (int) (installed.getEnergyReceivedSinceDurabilityDamage() / threshold);
+                if (durabilityDamage <= 0) continue;
+
+                installed.setEnergyReceivedSinceDurabilityDamage(installed.getEnergyReceivedSinceDurabilityDamage() % threshold);
+                damage(entity, data, installed, CyberwareDegradationCause.ENERGY_RECEIVED, durabilityDamage);
+            }
+            return;
+        }
+
         for (var entry : data.getAll().entrySet()) {
             InstalledCyberware[] arr = entry.getValue();
             if (arr == null) continue;
@@ -248,6 +293,29 @@ public final class CyberwareDurabilityManager {
     public static void recordBatteryEnergyExtracted(LivingEntity entity, PlayerCyberwareData data, int amount) {
         if (entity == null || data == null || amount <= 0) return;
         if (ConfigValues.BATTERY_ENERGY_EXTRACTED_PER_DAMAGE <= 0) return;
+
+        com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile profile =
+                com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager.getProfile(
+                        entity instanceof net.minecraft.world.entity.player.Player p ? p : null,
+                        data
+                );
+        if (profile != null) {
+            java.util.List<InstalledCyberware> batteries = profile.batterySlots();
+            if (batteries.isEmpty()) return;
+
+            long threshold = ConfigValues.BATTERY_ENERGY_EXTRACTED_PER_DAMAGE;
+            for (InstalledCyberware installed : batteries) {
+                if (!usesDurability(installed)) continue;
+
+                installed.addEnergyExtractedSinceDurabilityDamage(amount);
+                int durabilityDamage = (int) (installed.getEnergyExtractedSinceDurabilityDamage() / threshold);
+                if (durabilityDamage <= 0) continue;
+
+                installed.setEnergyExtractedSinceDurabilityDamage(installed.getEnergyExtractedSinceDurabilityDamage() % threshold);
+                damage(entity, data, installed, CyberwareDegradationCause.ENERGY_EXTRACTED, durabilityDamage);
+            }
+            return;
+        }
 
         for (var entry : data.getAll().entrySet()) {
             InstalledCyberware[] arr = entry.getValue();

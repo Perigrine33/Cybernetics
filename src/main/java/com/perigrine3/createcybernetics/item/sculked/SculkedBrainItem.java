@@ -1,5 +1,6 @@
 package com.perigrine3.createcybernetics.item.sculked;
 
+import com.perigrine3.createcybernetics.common.scheduling.StaggeredTickScheduler;
 import com.perigrine3.createcybernetics.api.CyberwareDurabilityCategory;
 import com.perigrine3.createcybernetics.api.CyberwareRepairType;
 import com.perigrine3.createcybernetics.api.CyberwareSlot;
@@ -37,7 +38,7 @@ public class SculkedBrainItem extends Item implements ICyberwareItem {
 
     private static final int CHECK_INTERVAL_TICKS = 40;
     private static final int NEAR_RADIUS_BLOCKS = 64;
-    private static final int LOCAL_DETERMINISTIC_RADIUS = 64;
+    private static final int LOCAL_DETERMINISTIC_RADIUS = 6;
 
     private static final float HURT_CHANCE_PER_CHECK = 0.35F;
     private static final float HURT_AMOUNT = 1.0F;
@@ -124,10 +125,12 @@ public class SculkedBrainItem extends Item implements ICyberwareItem {
         }
 
         if (!(player instanceof ServerPlayer serverPlayer)) return;
+        if (!StaggeredTickScheduler.shouldRun(player, CHECK_INTERVAL_TICKS, StaggeredTickScheduler.TickPhase.SCULKED_CHECK)) {
+            return;
+        }
         if (!hasThisInstalled(serverPlayer)) return;
-        if ((player.tickCount % CHECK_INTERVAL_TICKS) != 0) return;
-        if (isNearSculk(serverPlayer, NEAR_RADIUS_BLOCKS)) return;
         if (player.getRandom().nextFloat() >= HURT_CHANCE_PER_CHECK) return;
+        if (isNearSculk(serverPlayer, NEAR_RADIUS_BLOCKS)) return;
 
         serverPlayer.hurt(serverPlayer.damageSources().magic(), HURT_AMOUNT);
         flashHivemindMessage(serverPlayer);
@@ -144,15 +147,16 @@ public class SculkedBrainItem extends Item implements ICyberwareItem {
     private static boolean isNearSculk(ServerPlayer player, int radius) {
         Level level = player.level();
         BlockPos origin = player.blockPosition();
+        BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
 
         for (int dy = -LOCAL_DETERMINISTIC_RADIUS; dy <= LOCAL_DETERMINISTIC_RADIUS; dy++) {
             for (int dx = -LOCAL_DETERMINISTIC_RADIUS; dx <= LOCAL_DETERMINISTIC_RADIUS; dx++) {
                 for (int dz = -LOCAL_DETERMINISTIC_RADIUS; dz <= LOCAL_DETERMINISTIC_RADIUS; dz++) {
-                    BlockPos pos = origin.offset(dx, dy, dz);
+                    mutablePos.setWithOffset(origin, dx, dy, dz);
 
-                    if (!level.hasChunkAt(pos)) continue;
+                    if (!level.hasChunkAt(mutablePos)) continue;
 
-                    if (isSculkBlock(level.getBlockState(pos).getBlock())) {
+                    if (isSculkBlock(level.getBlockState(mutablePos).getBlock())) {
                         return true;
                     }
                 }
@@ -171,11 +175,11 @@ public class SculkedBrainItem extends Item implements ICyberwareItem {
 
             if ((dx * dx + dy * dy + dz * dz) > r2) continue;
 
-            BlockPos pos = origin.offset(dx, dy, dz);
+            mutablePos.setWithOffset(origin, dx, dy, dz);
 
-            if (!level.hasChunkAt(pos)) continue;
+            if (!level.hasChunkAt(mutablePos)) continue;
 
-            if (isSculkBlock(level.getBlockState(pos).getBlock())) {
+            if (isSculkBlock(level.getBlockState(mutablePos).getBlock())) {
                 return true;
             }
         }

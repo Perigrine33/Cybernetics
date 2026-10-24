@@ -22,20 +22,36 @@ public final class BiochipConsciousnessDownloadHandler {
     private BiochipConsciousnessDownloadHandler() {}
 
     @SubscribeEvent
+    public static void onChipwareShardChange(CyberwareChipwareShardChangeEvent event) {
+        if (!(event.getPlayer() instanceof ServerPlayer sp)) return;
+        PlayerCyberwareData data = event.getData();
+        if (data == null) return;
+
+        Set<String> slottedIds = collectSlottedBiochipIds(data);
+        if (resetUnslottedBiochips(sp, slottedIds)) {
+            data.setDirty();
+        }
+    }
+
+    @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
         for (ServerPlayer sp : event.getServer().getPlayerList().getPlayers()) {
             if (!sp.hasData(ModAttachments.CYBERWARE)) continue;
 
             PlayerCyberwareData data = sp.getData(ModAttachments.CYBERWARE);
+            if (data == null || !hasSlottedBiochip(data)) continue;
 
+            boolean syncNow = com.perigrine3.createcybernetics.common.scheduling.StaggeredTickScheduler.shouldRun(
+                    sp,
+                    20,
+                    com.perigrine3.createcybernetics.common.scheduling.StaggeredTickScheduler.TickPhase.BIOCHIP_DOWNLOAD
+            );
+            boolean completedNow = false;
             boolean changed = false;
-
-            Set<String> slottedIds = new HashSet<>();
 
             for (int i = 0; i < PlayerCyberwareData.CHIPWARE_SLOT_COUNT; i++) {
                 ItemStack stack = data.getChipwareStack(i);
-                if (stack.isEmpty()) continue;
-                if (!stack.is(ModItems.DATA_SHARD_BIOCHIP.get())) continue;
+                if (stack.isEmpty() || !stack.is(ModItems.DATA_SHARD_BIOCHIP.get())) continue;
 
                 CompoundTag tag = BiochipDataShardItem.getOrCreateTag(stack);
 
@@ -45,7 +61,6 @@ public final class BiochipConsciousnessDownloadHandler {
                     tag.putString(BiochipDataShardItem.TAG_ID, id);
                     changed = true;
                 }
-                slottedIds.add(id);
 
                 if (!tag.contains(BiochipDataShardItem.TAG_PROGRESS)) {
                     tag.putLong(BiochipDataShardItem.TAG_PROGRESS, 0L);
@@ -64,26 +79,48 @@ public final class BiochipConsciousnessDownloadHandler {
                         ticks = BiochipDataShardItem.TOTAL_TICKS;
                         tag.putBoolean(BiochipDataShardItem.TAG_DONE, true);
                         writeOwner(tag, sp);
+                        completedNow = true;
                     }
 
                     tag.putLong(BiochipDataShardItem.TAG_PROGRESS, ticks);
                     changed = true;
                 }
 
-                BiochipDataShardItem.setTag(stack, tag);
-                data.setChipwareStack(i, stack);
-            }
-
-            changed |= resetUnslottedBiochips(sp, slottedIds);
-
-            if (changed) {
-                data.setDirty();
-
-                if ((sp.serverLevel().getGameTime() % 20L) == 0L) {
-                    sp.syncData(ModAttachments.CYBERWARE);
+                if (changed) {
+                    BiochipDataShardItem.setTag(stack, tag);
                 }
             }
+
+            if (completedNow || (changed && syncNow)) {
+                data.setDirty();
+            }
         }
+    }
+
+    private static boolean hasSlottedBiochip(PlayerCyberwareData data) {
+        var biochip = ModItems.DATA_SHARD_BIOCHIP.get();
+        for (int i = 0; i < PlayerCyberwareData.CHIPWARE_SLOT_COUNT; i++) {
+            ItemStack stack = data.getChipwareStack(i);
+            if (!stack.isEmpty() && stack.is(biochip)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static Set<String> collectSlottedBiochipIds(PlayerCyberwareData data) {
+        Set<String> slottedIds = new HashSet<>();
+        var biochip = ModItems.DATA_SHARD_BIOCHIP.get();
+        for (int i = 0; i < PlayerCyberwareData.CHIPWARE_SLOT_COUNT; i++) {
+            ItemStack stack = data.getChipwareStack(i);
+            if (stack.isEmpty() || !stack.is(biochip)) continue;
+            CompoundTag tag = BiochipDataShardItem.getOrCreateTag(stack);
+            String id = tag.getString(BiochipDataShardItem.TAG_ID);
+            if (id != null && !id.isBlank()) {
+                slottedIds.add(id);
+            }
+        }
+        return slottedIds;
     }
 
     private static void writeOwner(CompoundTag tag, ServerPlayer sp) {

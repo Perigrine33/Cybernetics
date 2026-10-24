@@ -4,31 +4,102 @@ import com.perigrine3.createcybernetics.CreateCybernetics;
 import com.perigrine3.createcybernetics.api.CyberwareSlot;
 import com.perigrine3.createcybernetics.common.capabilities.ModAttachments;
 import com.perigrine3.createcybernetics.common.capabilities.PlayerCyberwareData;
+import com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile;
+import com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.FullBorgModel;
+import com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager;
 import com.perigrine3.createcybernetics.compat.ModCompats;
 import com.perigrine3.createcybernetics.item.ModItems;
 import com.perigrine3.createcybernetics.util.CyberwareAttributeHelper;
 import com.perigrine3.createcybernetics.util.ModTags;
 import com.perigrine3.createcybernetics.util.SculkedConversionHelper;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerXpEvent;
 
 @EventBusSubscriber(modid = CreateCybernetics.MODID, bus = EventBusSubscriber.Bus.GAME)
 public final class FullBorgHandler {
     private FullBorgHandler() {}
 
     @SubscribeEvent
-    public static void onPlayerTick(PlayerTickEvent.Post event) {
+    public static void onCyberwareStateChange(CyberwareStateChangeEvent event) {
+        if (!(event.getPlayer() instanceof ServerPlayer player)) return;
+        CyberwareLoadoutProfile profile = event.getCurrentProfile();
+        if (profile == null) return;
+
+        applyModelModifiers(player, profile.fullBorgModel(), profile.sculkedBody());
+    }
+
+    @SubscribeEvent
+    public static void onMovementStateChange(CyberwarePlayerMovementStateEvent event) {
+        if (!(event.getPlayer() instanceof ServerPlayer player)) return;
+        CyberwareLoadoutProfile profile = CyberwareProfileManager.getProfile(player, event.getData());
+        if (profile == null) return;
+
+        FullBorgModel model = profile.fullBorgModel();
+        if (model == FullBorgModel.ECLIPSE) {
+            if (event.getCurrentState().sprinting()) {
+                CyberwareAttributeHelper.applyModifier(player, "eclipse_sprintspeed");
+            } else {
+                CyberwareAttributeHelper.removeModifier(player, "eclipse_sprintspeed");
+            }
+        } else if (model == FullBorgModel.GENOS) {
+            if (event.getCurrentState().sprinting()) {
+                CyberwareAttributeHelper.applyModifier(player, "genos_speed");
+            } else {
+                CyberwareAttributeHelper.removeModifier(player, "genos_speed");
+            }
+        } else if (model == FullBorgModel.WINGMAN && ModCompats.isInstalled("caelus")) {
+            if (event.getCurrentState().crouching()) {
+                CyberwareAttributeHelper.removeModifier(player, "wingman_elytraspeed");
+            } else {
+                CyberwareAttributeHelper.applyModifier(player, "wingman_elytraspeed");
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerXpLevelChange(PlayerXpEvent.LevelChange event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        if (!player.hasData(ModAttachments.CYBERWARE)) return;
+        CyberwareLoadoutProfile profile = CyberwareProfileManager.getProfile(player);
+        if (profile == null || !profile.sculkedBody()) return;
 
-        PlayerCyberwareData data = player.getData(ModAttachments.CYBERWARE);
-        if (data == null) return;
+        applySculkedLevelModifiers(player, player.experienceLevel + event.getLevels());
+    }
 
-        boolean geminiModel = isGemini(data);
-        if (geminiModel) {
+    public static FullBorgModel detectModel(PlayerCyberwareData data) {
+        if (!hasCommonFullBorgChassis(data)) {
+            return FullBorgModel.NONE;
+        }
+        if (isGemini(data)) return FullBorgModel.GEMINI;
+        if (isSamson(data)) return FullBorgModel.SAMSON;
+        if (isEclipse(data)) return FullBorgModel.ECLIPSE;
+        if (isSpyder(data)) return FullBorgModel.SPYDER;
+        if (ModCompats.isInstalled("caelus") && isWingman(data)) return FullBorgModel.WINGMAN;
+        if (isAquarius(data)) return FullBorgModel.AQUARIUS;
+        if (isDymond(data)) return FullBorgModel.DYMOND;
+        if (isDragoon(data)) return FullBorgModel.DRAGOON;
+        if (isCopernicus(data)) return FullBorgModel.COPERNICUS;
+        if (isGenos(data)) return FullBorgModel.GENOS;
+        if (isKildare(data)) return FullBorgModel.KILDARE;
+        if (ModCompats.isInstalled("irons_spellbooks") && isHexborg(data)) return FullBorgModel.HEXBORG;
+        return FullBorgModel.NONE;
+    }
+
+    private static boolean hasCommonFullBorgChassis(PlayerCyberwareData data) {
+        return data != null
+                && data.hasSpecificItem(ModItems.BASECYBERWARE_RIGHTARM.get(), CyberwareSlot.RARM)
+                && data.hasSpecificItem(ModItems.BASECYBERWARE_LEFTARM.get(), CyberwareSlot.LARM)
+                && data.hasSpecificItem(ModItems.BASECYBERWARE_RIGHTLEG.get(), CyberwareSlot.RLEG)
+                && data.hasSpecificItem(ModItems.BASECYBERWARE_LEFTLEG.get(), CyberwareSlot.LLEG)
+                && data.hasSpecificItem(ModItems.MUSCLEUPGRADES_SYNTHMUSCLE.get(), CyberwareSlot.MUSCLE)
+                && data.hasSpecificItem(ModItems.BASECYBERWARE_LINEARFRAME.get(), CyberwareSlot.BONE);
+    }
+
+    private static void applyModelModifiers(Player player, FullBorgModel model, boolean sculkedBody) {
+        if (model == FullBorgModel.GEMINI) {
             CyberwareAttributeHelper.applyModifier(player, "gemini_attackstrength");
             CyberwareAttributeHelper.applyModifier(player, "gemini_attackspeed");
             CyberwareAttributeHelper.applyModifier(player, "gemini_miningstrength");
@@ -40,8 +111,7 @@ public final class FullBorgHandler {
             CyberwareAttributeHelper.removeModifier(player, "gemini_speed");
         }
 
-        boolean samsonModel = isSamson(data);
-        if (samsonModel) {
+        if (model == FullBorgModel.SAMSON) {
             CyberwareAttributeHelper.applyModifier(player, "samson_attackstrength");
             CyberwareAttributeHelper.applyModifier(player, "samson_miningstrength");
             CyberwareAttributeHelper.applyModifier(player, "samson_durability");
@@ -55,8 +125,7 @@ public final class FullBorgHandler {
             CyberwareAttributeHelper.removeModifier(player, "samson_weight");
         }
 
-        boolean eclipseModel = isEclipse(data);
-        if (eclipseModel) {
+        if (model == FullBorgModel.ECLIPSE) {
             CyberwareAttributeHelper.applyModifier(player, "eclipse_crouchspeed");
             CyberwareAttributeHelper.applyModifier(player, "eclipse_speed");
             if (player.isSprinting()) {
@@ -70,8 +139,7 @@ public final class FullBorgHandler {
             CyberwareAttributeHelper.removeModifier(player, "eclipse_sprintspeed");
         }
 
-        boolean spyderModel = isSpyder(data);
-        if (spyderModel) {
+        if (model == FullBorgModel.SPYDER) {
             CyberwareAttributeHelper.applyModifier(player, "spyder_crouchspeed");
             CyberwareAttributeHelper.applyModifier(player, "spyder_jumpheight");
         } else {
@@ -80,8 +148,7 @@ public final class FullBorgHandler {
         }
 
         if (ModCompats.isInstalled("caelus")) {
-            boolean wingmanModel = isWingman(data);
-            if (wingmanModel) {
+            if (model == FullBorgModel.WINGMAN) {
                 CyberwareAttributeHelper.applyModifier(player, "wingman_elytraspeed");
                 CyberwareAttributeHelper.applyModifier(player, "wingman_elytrahandling");
                 if (player.isShiftKeyDown()) {
@@ -93,8 +160,7 @@ public final class FullBorgHandler {
             }
         }
 
-        boolean aquariusModel = isAquarius(data);
-        if (aquariusModel) {
+        if (model == FullBorgModel.AQUARIUS) {
             CyberwareAttributeHelper.applyModifier(player, "aquarius_movement");
             CyberwareAttributeHelper.applyModifier(player, "aquarius_mining");
             CyberwareAttributeHelper.applyModifier(player, "aquarius_swim");
@@ -104,8 +170,7 @@ public final class FullBorgHandler {
             CyberwareAttributeHelper.removeModifier(player, "aquarius_swim");
         }
 
-        boolean dymondModel = isDymond(data);
-        if (dymondModel) {
+        if (model == FullBorgModel.DYMOND) {
             CyberwareAttributeHelper.applyModifier(player, "dymond_miningspeed");
             CyberwareAttributeHelper.applyModifier(player, "dymond_weight");
         } else {
@@ -113,8 +178,7 @@ public final class FullBorgHandler {
             CyberwareAttributeHelper.removeModifier(player, "dymond_weight");
         }
 
-        boolean dragoonModel = isDragoon(data);
-        if (dragoonModel) {
+        if (model == FullBorgModel.DRAGOON) {
             CyberwareAttributeHelper.applyModifier(player, "dragoon_weight");
             CyberwareAttributeHelper.applyModifier(player, "dragoon_size");
             CyberwareAttributeHelper.applyModifier(player, "dragoon_attack");
@@ -133,16 +197,14 @@ public final class FullBorgHandler {
         }
 
         if (ModCompats.isInstalled("creatingspace") || ModCompats.isInstalled("northstar")) {
-            boolean copernicusModel = isCopernicus(data);
-            if (copernicusModel) {
+            if (model == FullBorgModel.COPERNICUS) {
                 CyberwareAttributeHelper.applyModifier(player, "copernicus_oxygen");
             } else {
                 CyberwareAttributeHelper.removeModifier(player, "copernicus_oxygen");
             }
         }
 
-        boolean genosModel = isGenos(data);
-        if (genosModel) {
+        if (model == FullBorgModel.GENOS) {
             CyberwareAttributeHelper.applyModifier(player, "genos_strength");
             if (player.isSprinting()) {
                 CyberwareAttributeHelper.applyModifier(player, "genos_speed");
@@ -154,64 +216,23 @@ public final class FullBorgHandler {
             CyberwareAttributeHelper.removeModifier(player, "genos_speed");
         }
 
-        boolean kildareModel = isKildare(data);
-        if (kildareModel) {
+        if (model == FullBorgModel.KILDARE) {
             CyberwareAttributeHelper.applyModifier(player, "kildare_strength");
             CyberwareAttributeHelper.applyModifier(player, "kildare_speed");
         } else {
             CyberwareAttributeHelper.removeModifier(player, "kildare_strength");
             CyberwareAttributeHelper.removeModifier(player, "kildare_speed");
         }
-
-        boolean hexborgModel = isHexborg(data);
-        if (kildareModel) {
-            CyberwareAttributeHelper.applyModifier(player, "kildare_strength");
-            CyberwareAttributeHelper.applyModifier(player, "kildare_speed");
-        } else {
-            CyberwareAttributeHelper.removeModifier(player, "kildare_strength");
-            CyberwareAttributeHelper.removeModifier(player, "kildare_speed");
-        }
-
-
-
-
-
-
-
-
-
-
-
 
         CyberwareAttributeHelper.removeModifier(player, "sculked_strength");
         CyberwareAttributeHelper.removeModifier(player, "sculked_speed");
 
-        boolean sculkedBody = isSculked(data);
         if (sculkedBody) {
             if (ModCompats.isInstalled("irons_spellbooks")) {
                 CyberwareAttributeHelper.applyModifier(player, "sculked_eldritch_power");
                 CyberwareAttributeHelper.applyModifier(player, "sculked_eldritch_resist");
             }
-
-            int xpLevel = player.experienceLevel;
-
-            if (xpLevel >= 10) {
-                CyberwareAttributeHelper.applyModifier(player, "sculked_size1");
-            } else {
-                CyberwareAttributeHelper.removeModifier(player, "sculked_size1");
-            }
-
-            if (xpLevel >= 20) {
-                CyberwareAttributeHelper.applyModifier(player, "sculked_size2");
-            } else {
-                CyberwareAttributeHelper.removeModifier(player, "sculked_size2");
-            }
-
-            if (xpLevel >= 30) {
-                CyberwareAttributeHelper.applyModifier(player, "sculked_size3");
-            } else {
-                CyberwareAttributeHelper.removeModifier(player, "sculked_size3");
-            }
+            applySculkedLevelModifiers(player, player.experienceLevel);
         } else {
             CyberwareAttributeHelper.removeModifier(player, "sculked_size1");
             CyberwareAttributeHelper.removeModifier(player, "sculked_size2");
@@ -221,6 +242,26 @@ public final class FullBorgHandler {
                 CyberwareAttributeHelper.removeModifier(player, "sculked_eldritch_power");
                 CyberwareAttributeHelper.removeModifier(player, "sculked_eldritch_resist");
             }
+        }
+    }
+
+    private static void applySculkedLevelModifiers(Player player, int xpLevel) {
+        if (xpLevel >= 10) {
+            CyberwareAttributeHelper.applyModifier(player, "sculked_size1");
+        } else {
+            CyberwareAttributeHelper.removeModifier(player, "sculked_size1");
+        }
+
+        if (xpLevel >= 20) {
+            CyberwareAttributeHelper.applyModifier(player, "sculked_size2");
+        } else {
+            CyberwareAttributeHelper.removeModifier(player, "sculked_size2");
+        }
+
+        if (xpLevel >= 30) {
+            CyberwareAttributeHelper.applyModifier(player, "sculked_size3");
+        } else {
+            CyberwareAttributeHelper.removeModifier(player, "sculked_size3");
         }
     }
 

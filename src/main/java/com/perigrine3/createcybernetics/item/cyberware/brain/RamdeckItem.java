@@ -66,12 +66,13 @@ public class RamdeckItem extends Item implements ICyberwareItem {
     @Override
     public int getEnergyUsedPerTick(LivingEntity entity, ItemStack installedStack, CyberwareSlot slot) {
         PlayerCyberwareData data = entity.getData(ModAttachments.CYBERWARE);
+        if (data == null) return 0;
 
-        if (data.hasMultipleSpecificItem(ModItems.BRAINUPGRADES_RAMDECK.get(), 3)) {
+        if (data.hasMultipleSpecificItem(ModItems.BRAINUPGRADES_RAMDECK.get(), CyberwareSlot.BRAIN, 3)) {
             return 18;
-        } else if (data.hasMultipleSpecificItem(ModItems.BRAINUPGRADES_RAMDECK.get(), 2)) {
+        } else if (data.hasMultipleSpecificItem(ModItems.BRAINUPGRADES_RAMDECK.get(), CyberwareSlot.BRAIN, 2)) {
             return 12;
-        } else if (data.hasMultipleSpecificItem(ModItems.BRAINUPGRADES_RAMDECK.get(), 1)) {
+        } else if (data.hasMultipleSpecificItem(ModItems.BRAINUPGRADES_RAMDECK.get(), CyberwareSlot.BRAIN, 1)) {
             return 6;
         } else {
             return 0;
@@ -95,12 +96,12 @@ public class RamdeckItem extends Item implements ICyberwareItem {
 
     @Override
     public void onTick(LivingEntity entity) {
-        if (!(entity instanceof Player player)) return;
-        if (player.level().isClientSide) return;
+    }
 
-        PlayerCyberwareData data = player.getData(ModAttachments.CYBERWARE);
+    public static void syncRamdeckModifiers(Player player, PlayerCyberwareData data) {
+        if (player == null || data == null) return;
 
-        if (data.hasMultipleSpecificItem(ModItems.BRAINUPGRADES_RAMDECK.get(), 3)) {
+        if (data.hasMultipleSpecificItem(ModItems.BRAINUPGRADES_RAMDECK.get(), CyberwareSlot.BRAIN, 3)) {
             CyberwareAttributeHelper.applyModifier(player, "ramdeck1_ram");
             CyberwareAttributeHelper.applyModifier(player, "ramdeck2_ram");
             CyberwareAttributeHelper.applyModifier(player, "ramdeck3_ram");
@@ -108,7 +109,7 @@ public class RamdeckItem extends Item implements ICyberwareItem {
             CyberwareAttributeHelper.applyModifier(player, "ramdeck1_ram_regen");
             CyberwareAttributeHelper.applyModifier(player, "ramdeck2_ram_regen");
             CyberwareAttributeHelper.applyModifier(player, "ramdeck3_ram_regen");
-        } else if (data.hasMultipleSpecificItem(ModItems.BRAINUPGRADES_RAMDECK.get(), 2)) {
+        } else if (data.hasMultipleSpecificItem(ModItems.BRAINUPGRADES_RAMDECK.get(), CyberwareSlot.BRAIN, 2)) {
             CyberwareAttributeHelper.applyModifier(player, "ramdeck1_ram");
             CyberwareAttributeHelper.applyModifier(player, "ramdeck2_ram");
             CyberwareAttributeHelper.removeModifier(player, "ramdeck3_ram");
@@ -116,7 +117,7 @@ public class RamdeckItem extends Item implements ICyberwareItem {
             CyberwareAttributeHelper.applyModifier(player, "ramdeck1_ram_regen");
             CyberwareAttributeHelper.applyModifier(player, "ramdeck2_ram_regen");
             CyberwareAttributeHelper.removeModifier(player, "ramdeck3_ram_regen");
-        } else if (data.hasMultipleSpecificItem(ModItems.BRAINUPGRADES_RAMDECK.get(), 1)) {
+        } else if (data.hasMultipleSpecificItem(ModItems.BRAINUPGRADES_RAMDECK.get(), CyberwareSlot.BRAIN, 1)) {
             CyberwareAttributeHelper.applyModifier(player, "ramdeck1_ram");
             CyberwareAttributeHelper.removeModifier(player, "ramdeck2_ram");
             CyberwareAttributeHelper.removeModifier(player, "ramdeck3_ram");
@@ -124,6 +125,23 @@ public class RamdeckItem extends Item implements ICyberwareItem {
             CyberwareAttributeHelper.applyModifier(player, "ramdeck1_ram_regen");
             CyberwareAttributeHelper.removeModifier(player, "ramdeck2_ram_regen");
             CyberwareAttributeHelper.removeModifier(player, "ramdeck3_ram_regen");
+        } else {
+            CyberwareAttributeHelper.removeModifier(player, "ramdeck1_ram");
+            CyberwareAttributeHelper.removeModifier(player, "ramdeck2_ram");
+            CyberwareAttributeHelper.removeModifier(player, "ramdeck3_ram");
+            CyberwareAttributeHelper.removeModifier(player, "ramdeck1_ram_regen");
+            CyberwareAttributeHelper.removeModifier(player, "ramdeck2_ram_regen");
+            CyberwareAttributeHelper.removeModifier(player, "ramdeck3_ram_regen");
+        }
+    }
+
+    @net.neoforged.fml.common.EventBusSubscriber(modid = com.perigrine3.createcybernetics.CreateCybernetics.MODID, bus = net.neoforged.fml.common.EventBusSubscriber.Bus.GAME)
+    public static final class EventHooks {
+        private EventHooks() {}
+
+        @net.neoforged.bus.api.SubscribeEvent
+        public static void onCyberwareStateChange(com.perigrine3.createcybernetics.event.custom.CyberwareStateChangeEvent event) {
+            syncRamdeckModifiers(event.getPlayer(), event.getData());
         }
     }
 }

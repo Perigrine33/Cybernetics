@@ -226,13 +226,17 @@ public final class FaceplateAliasHandler {
     }
 
     @SubscribeEvent
-    public static void onPlayerTick(PlayerTickEvent.Post event) {
-        if (!(event.getEntity() instanceof ServerPlayer sp)) return;
+    public static void onCyberwareStateChange(com.perigrine3.createcybernetics.event.custom.CyberwareStateChangeEvent event) {
+        if (!(event.getPlayer() instanceof ServerPlayer sp)) return;
         if (sp.level().isClientSide) return;
 
         if (!hasActive(sp)) return;
 
-        if (!hasInterchangeableFaceplateInstalled(sp)) {
+        var profile = event.getCurrentProfile();
+        boolean hasFaceplate = profile != null
+                ? profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.INTERCHANGEABLE_FACEPLATE)
+                : hasInterchangeableFaceplateInstalled(sp);
+        if (!hasFaceplate) {
             clear(sp, true);
         }
     }

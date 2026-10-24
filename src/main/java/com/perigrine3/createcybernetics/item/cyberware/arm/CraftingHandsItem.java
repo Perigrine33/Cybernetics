@@ -85,10 +85,6 @@ public class CraftingHandsItem extends Item implements ICyberwareItem {
         return Set.of();
     }
 
-    @Override
-    public void onTick(LivingEntity entity) {
-    }
-
     private record Found(CyberwareSlot slot, int index) {}
 
     private static Found findFirst(PlayerCyberwareData data, CyberwareSlot slot) {
@@ -115,12 +111,14 @@ public class CraftingHandsItem extends Item implements ICyberwareItem {
     public static final class ServerHandler {
 
         @SubscribeEvent
-        public static void onPlayerTick(PlayerTickEvent.Post event) {
-            Player player = event.getEntity();
-            if (player.level().isClientSide) return;
-
-            if (!player.hasData(ModAttachments.CYBERWARE)) return;
-            PlayerCyberwareData data = player.getData(ModAttachments.CYBERWARE);
+        public static void onCyberwareStateChange(com.perigrine3.createcybernetics.event.custom.CyberwareStateChangeEvent event) {
+            Player player = event.getPlayer();
+            if (player == null || player.level().isClientSide) return;
+            var profile = event.getCurrentProfile();
+            if (profile == null || !profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.CRAFTING_HANDS)) {
+                return;
+            }
+            PlayerCyberwareData data = event.getData();
             if (data == null) return;
 
             Found left = findFirst(data, CyberwareSlot.LARM);

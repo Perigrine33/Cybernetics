@@ -9,12 +9,14 @@ import com.perigrine3.createcybernetics.common.capabilities.PlayerCyberwareData;
 import com.perigrine3.createcybernetics.common.quickhack.QuickhackRuntimeManager;
 import com.perigrine3.createcybernetics.effect.ModEffects;
 import com.perigrine3.createcybernetics.item.ModItems;
+import com.perigrine3.createcybernetics.event.custom.CyberwarePowerStateChangeEvent;
 import com.perigrine3.createcybernetics.item.cyberware.skin.EMPThreadingItem;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
 import java.lang.reflect.Method;
@@ -83,7 +85,6 @@ public final class EnergyController {
         }
 
         data.clampEnergyToCapacity(player);
-        data.setDirty();
     }
 
     private static void shutdownAllCyberwareEnergy(Player player, PlayerCyberwareData data) {
@@ -201,23 +202,23 @@ public final class EnergyController {
 
                 ItemStack stack = cw.getItem();
                 if (stack == null || stack.isEmpty()) {
-                    cw.setPowered(false);
+                    updatePowered(player, data, slot, idx, cw, false);
                     continue;
                 }
 
                 if (!(stack.getItem() instanceof ICyberwareItem item)) {
-                    cw.setPowered(true);
+                    updatePowered(player, data, slot, idx, cw, true);
                     continue;
                 }
 
                 if (QuickhackRuntimeManager.isRebooted(player, cw)) {
-                    cw.setPowered(false);
+                    updatePowered(player, data, slot, idx, cw, false);
                     clearActivationPaidFlag(player, item, stack, slot, idx);
                     continue;
                 }
 
                 if (QuickhackRuntimeManager.isForcedPowerOff(player, slot, idx)) {
-                    cw.setPowered(false);
+                    updatePowered(player, data, slot, idx, cw, false);
                     clearActivationPaidFlag(player, item, stack, slot, idx);
                     continue;
                 }
@@ -259,9 +260,17 @@ public final class EnergyController {
                     clearActivationPaidFlag(player, item, stack, slot, idx);
                 }
 
-                cw.setPowered(powered);
+                updatePowered(player, data, slot, idx, cw, powered);
             }
         }
+    }
+
+    private static void updatePowered(Player player, PlayerCyberwareData data, CyberwareSlot slot, int index, InstalledCyberware cyberware, boolean powered) {
+        if (cyberware.isPowered() == powered) return;
+
+        cyberware.setPowered(powered);
+        data.setDirty();
+        NeoForge.EVENT_BUS.post(new CyberwarePowerStateChangeEvent(player, data, slot, index, cyberware, powered));
     }
 
     private static void clearActivationPaidFlag(Player player, ICyberwareItem item, ItemStack stack, CyberwareSlot slot, int index) {

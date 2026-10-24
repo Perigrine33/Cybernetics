@@ -252,8 +252,13 @@ public final class CreatingSpaceCompat {
             PlayerCyberwareData data = getData(player);
             if (data == null) return;
 
-            boolean oxygenatedEnvironment = isOxygenatedEnvironment(player);
             boolean hasSuitEquivalent = hasSuitEquivalent(player);
+            if (!hasSuitEquivalent && data.getCopernicusOxygen() >= CREATING_SPACE_OXYGEN_MAX_DISPLAY) {
+                return;
+            }
+
+            int previousOxygen = data.getCopernicusOxygen();
+            boolean oxygenatedEnvironment = isOxygenatedEnvironment(player);
 
             data.setCopernicusOxygenatedEnvironment(oxygenatedEnvironment);
 
@@ -273,7 +278,9 @@ public final class CreatingSpaceCompat {
                 );
             }
 
-            syncOxygenToClient(player, data);
+            if (data.getCopernicusOxygen() != previousOxygen) {
+                syncOxygenToClient(player, data);
+            }
 
             if (!hasSuitEquivalent) return;
             if (player.isCreative()) return;

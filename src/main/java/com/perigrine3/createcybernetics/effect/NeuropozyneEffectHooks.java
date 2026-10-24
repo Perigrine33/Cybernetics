@@ -50,14 +50,10 @@ public final class NeuropozyneEffectHooks {
     }
 
     @SubscribeEvent
-    public static void onPlayerTick(PlayerTickEvent.Post event) {
-        Player player = event.getEntity();
+    public static void onCyberwareStateChange(com.perigrine3.createcybernetics.event.custom.CyberwareStateChangeEvent event) {
+        Player player = event.getPlayer();
 
-        if (player.level().isClientSide) {
-            return;
-        }
-
-        if ((player.tickCount % 20) != 0) {
+        if (player == null || player.level().isClientSide) {
             return;
         }
 

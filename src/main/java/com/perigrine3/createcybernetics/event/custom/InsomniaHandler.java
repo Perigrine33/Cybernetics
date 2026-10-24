@@ -1,5 +1,6 @@
 package com.perigrine3.createcybernetics.event.custom;
 
+import com.perigrine3.createcybernetics.common.scheduling.StaggeredTickScheduler;
 import com.perigrine3.createcybernetics.CreateCybernetics;
 import com.perigrine3.createcybernetics.common.attributes.ModAttributes;
 import net.minecraft.server.level.ServerPlayer;
@@ -37,8 +38,9 @@ public final class InsomniaHandler {
     public static void onPlayerTick(PlayerTickEvent.Post event) {
         if (!(event.getEntity() instanceof ServerPlayer sp)) return;
 
-        long now = sp.serverLevel().getGameTime();
-        if ((now % UPDATE_INTERVAL_TICKS) != 0L) return;
+        if (!StaggeredTickScheduler.shouldRun(sp, UPDATE_INTERVAL_TICKS, StaggeredTickScheduler.TickPhase.INSOMNIA)) {
+            return;
+        }
         AttributeInstance inst = sp.getAttribute(ModAttributes.INSOMNIA);
         if (inst == null) return;
 
@@ -46,6 +48,11 @@ public final class InsomniaHandler {
         if (!Double.isFinite(days)) return;
 
         var pd = sp.getPersistentData();
+        if (Math.abs(days - 3.0D) < 1.0E-6D && !pd.contains(NBT_LAST_GAME_TIME)) {
+            return;
+        }
+
+        long now = sp.serverLevel().getGameTime();
         long last = pd.getLong(NBT_LAST_GAME_TIME);
         if (last == 0L) last = now;
 

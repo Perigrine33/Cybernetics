@@ -162,11 +162,6 @@ public class ElectricArcCannonItem extends Item implements ICyberwareItem {
         return Set.of();
     }
 
-    @Override
-    public void onTick(LivingEntity entity) {
-
-    }
-
     @EventBusSubscriber(modid = CreateCybernetics.MODID, bus = EventBusSubscriber.Bus.GAME)
     public static final class ServerHandler {
         private static final Map<UUID, Long> LEFT_COOLDOWNS = new HashMap<>();
@@ -179,11 +174,16 @@ public class ElectricArcCannonItem extends Item implements ICyberwareItem {
             Player player = event.getEntity();
             if (player.level().isClientSide) return;
 
-            removeLegacyCooldownNbt(player);
-            cleanupExpiredCooldowns(player);
-
             PlayerCyberwareData data = getData(player);
             if (data == null) return;
+
+            var profile = com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager.getProfile(player, data);
+            if (profile != null && !profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.ELECTRIC_ARC_CANNON)) {
+                return;
+            }
+
+            removeLegacyCooldownNbt(player);
+            cleanupExpiredCooldowns(player);
 
             if (isEnabledForHand(player, data, InteractionHand.MAIN_HAND)) {
                 dropHand(player, InteractionHand.MAIN_HAND);

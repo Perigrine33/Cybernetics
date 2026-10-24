@@ -30,23 +30,30 @@ public final class NeoSyncShellPhasingHandler {
         }
 
         Player player = event.getEntity();
-
-        repairLegacyPhysicsState(player);
+        boolean phasing = isPhasing(player);
 
         if (!player.isAlive() || player.isRemoved()) {
-            stopPhasing(player);
+            if (phasing) {
+                stopPhasing(player);
+            }
             return;
         }
 
+        if (!player.isShiftKeyDown() && !phasing) {
+            return;
+        }
+
+        repairLegacyPhysicsState(player);
+
         ContainerTarget target = findIntersectingEmptyContainer(player);
 
-        if (target != null && (player.isShiftKeyDown() || isPhasing(player))) {
+        if (target != null) {
             startPhasing(player);
             holdInsideContainer(player, target.pos());
             return;
         }
 
-        if (isPhasing(player)) {
+        if (phasing) {
             stopPhasing(player);
         }
     }

@@ -114,15 +114,16 @@ public class DrillFistItem extends Item implements ICyberwareItem {
     public void onRemoved(LivingEntity entity) {
     }
 
-    @Override
-    public void onTick(LivingEntity entity) {
-    }
-
     private static boolean hasDrillInstalled(Player player, CyberwareSlot slot) {
         if (!player.hasData(ModAttachments.CYBERWARE)) return false;
 
         PlayerCyberwareData data = player.getData(ModAttachments.CYBERWARE);
         if (data == null) return false;
+
+        var profile = com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager.getProfile(player, data);
+        if (profile != null && !profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.DRILL_FIST)) {
+            return false;
+        }
 
         return data.hasSpecificItem(ModItems.ARMUPGRADES_DRILLFIST.get(), slot);
     }

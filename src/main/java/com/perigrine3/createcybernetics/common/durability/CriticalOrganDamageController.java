@@ -1,5 +1,6 @@
 package com.perigrine3.createcybernetics.common.durability;
 
+import com.perigrine3.createcybernetics.common.scheduling.StaggeredTickScheduler;
 import com.perigrine3.createcybernetics.ConfigValues;
 import com.perigrine3.createcybernetics.CreateCybernetics;
 import com.perigrine3.createcybernetics.api.CyberwareSlot;
@@ -87,7 +88,9 @@ public final class CriticalOrganDamageController {
     public static void onPlayerTick(PlayerTickEvent.Post event) {
         Player player = event.getEntity();
         if (player.level().isClientSide) return;
-        if (player.tickCount % 20 != 0) return;
+        if (!StaggeredTickScheduler.shouldRun(player, 20, StaggeredTickScheduler.TickPhase.CRITICAL_ORGANS)) {
+            return;
+        }
 
         if (!ConfigValues.CRITICAL_DURABILITY_DEBUFFS) {
             clearCriticalState(player);
@@ -217,7 +220,9 @@ public final class CriticalOrganDamageController {
     }
 
     private static void handleSkin(Player player, PlayerCyberwareData data) {
-        if (player.tickCount % 1200 != 0) return;
+        if (!StaggeredTickScheduler.shouldRun(player, 1200, StaggeredTickScheduler.TickPhase.CRITICAL_ORGANS)) {
+            return;
+        }
 
         InstalledCyberware skin = findLowestDurabilityOrgan(data, CyberwareSlot.SKIN, ModTags.Items.SKIN_ITEMS);
         if (!isBelowThreshold(skin, SKIN_THRESHOLD)) return;

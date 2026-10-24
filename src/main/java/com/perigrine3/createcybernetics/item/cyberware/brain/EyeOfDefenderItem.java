@@ -116,6 +116,11 @@ public class EyeOfDefenderItem extends Item implements ICyberwareItem {
         PlayerCyberwareData data = player.getData(ModAttachments.CYBERWARE);
         if (data == null) return false;
 
+        var profile = com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager.getProfile(player, data);
+        if (profile != null && !profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.EYE_OF_DEFENDER)) {
+            return false;
+        }
+
         InstalledCyberware[] arr = data.getAll().get(CyberwareSlot.BRAIN);
         if (arr == null) return false;
 
@@ -142,7 +147,9 @@ public class EyeOfDefenderItem extends Item implements ICyberwareItem {
 
         if (!entity.hasData(ModMobAttachments.CYBERENTITY_CYBERWARE)) return false;
         EntityCyberwareData data = entity.getData(ModMobAttachments.CYBERENTITY_CYBERWARE);
-        if (data == null) return false;
+        if (data == null || !com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager.hasEntityEyeOfDefender(data)) {
+            return false;
+        }
 
         InstalledCyberware[] arr = data.getAll().get(CyberwareSlot.BRAIN);
         if (arr == null) return false;

@@ -42,6 +42,41 @@ public class EntityCyberwareData implements ICyberwareData {
     private boolean dirty = false;
     private int energyStored = 0;
 
+    private int loadoutVersion = 1;
+    private transient int cachedTickableVersion = 0;
+    private transient java.util.List<com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.InstalledSlotRef> cachedTickableSlots = java.util.List.of();
+    private transient boolean cachedEyeOfDefender = false;
+
+    public int getLoadoutVersion() {
+        return loadoutVersion;
+    }
+
+    public void incrementLoadoutVersion() {
+        loadoutVersion++;
+    }
+
+    public int getCachedTickableVersion() {
+        return cachedTickableVersion;
+    }
+
+    public java.util.List<com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.InstalledSlotRef> getCachedTickableSlots() {
+        return cachedTickableSlots;
+    }
+
+    public boolean hasCachedEyeOfDefender() {
+        return cachedEyeOfDefender;
+    }
+
+    public void updateEntityCache(
+            int version,
+            java.util.List<com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.InstalledSlotRef> tickableSlots,
+            boolean hasEyeOfDefender
+    ) {
+        this.cachedTickableVersion = version;
+        this.cachedTickableSlots = tickableSlots;
+        this.cachedEyeOfDefender = hasEyeOfDefender;
+    }
+
     public EntityCyberwareData() {
         for (CyberwareSlot slot : CyberwareSlot.values()) {
             slots.put(slot, new InstalledCyberware[slot.size]);
@@ -77,6 +112,7 @@ public class EntityCyberwareData implements ICyberwareData {
             en[index] = true;
         }
 
+        incrementLoadoutVersion();
         dirty = true;
     }
 
@@ -93,6 +129,7 @@ public class EntityCyberwareData implements ICyberwareData {
             en[index] = true;
         }
 
+        incrementLoadoutVersion();
         dirty = true;
         return old;
     }
@@ -132,6 +169,7 @@ public class EntityCyberwareData implements ICyberwareData {
         }
 
         energyStored = 0;
+        incrementLoadoutVersion();
         dirty = true;
     }
 
@@ -162,6 +200,7 @@ public class EntityCyberwareData implements ICyberwareData {
 
         if (arr[index] != value) {
             arr[index] = value;
+            incrementLoadoutVersion();
             dirty = true;
         }
     }
@@ -431,6 +470,7 @@ public class EntityCyberwareData implements ICyberwareData {
             chipware[i] = ItemStack.EMPTY;
         }
 
+        incrementLoadoutVersion();
         dirty = true;
     }
 
@@ -797,6 +837,7 @@ public class EntityCyberwareData implements ICyberwareData {
         }
 
         energyStored = tag.contains(NBT_ENERGY, Tag.TAG_INT) ? tag.getInt(NBT_ENERGY) : 0;
+        incrementLoadoutVersion();
         dirty = false;
     }
 }

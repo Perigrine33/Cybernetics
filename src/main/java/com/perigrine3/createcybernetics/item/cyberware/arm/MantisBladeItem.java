@@ -380,22 +380,45 @@ public class MantisBladeItem extends Item implements ICyberwareItem {
         private static final Map<UUID, Boolean> LAST_RIGHT = new HashMap<>();
 
         @SubscribeEvent
-        public static void onPlayerTick(PlayerTickEvent.Post event) {
-            Player player = event.getEntity();
+        public static void onCyberwareStateChange(com.perigrine3.createcybernetics.event.custom.CyberwareStateChangeEvent event) {
+            syncMantisBlades(event.getPlayer(), event.getData(), event.getCurrentProfile());
+        }
 
-            if (player.level().isClientSide) {
+        @SubscribeEvent
+        public static void onPowerStateChange(com.perigrine3.createcybernetics.event.custom.CyberwarePowerStateChangeEvent event) {
+            if (event.getSlot() != CyberwareSlot.LARM && event.getSlot() != CyberwareSlot.RARM) return;
+            Player player = event.getPlayer();
+            PlayerCyberwareData data = event.getData();
+            syncMantisBlades(player, data, com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager.getProfile(player, data));
+        }
+
+        @SubscribeEvent
+        public static void onEquipmentChange(net.neoforged.neoforge.event.entity.living.LivingEquipmentChangeEvent event) {
+            if (!(event.getEntity() instanceof Player player)) return;
+            if (player.level().isClientSide) return;
+            if (event.getSlot() != net.minecraft.world.entity.EquipmentSlot.MAINHAND
+                    && event.getSlot() != net.minecraft.world.entity.EquipmentSlot.OFFHAND) {
                 return;
             }
-
-            if (!player.hasData(ModAttachments.CYBERWARE)) {
-                removeAllMantisBladeModifiers(player);
-                clearTrackedState(player);
-                return;
-            }
-
+            if (!player.hasData(ModAttachments.CYBERWARE)) return;
             PlayerCyberwareData data = player.getData(ModAttachments.CYBERWARE);
+            var profile = com.perigrine3.createcybernetics.common.scheduling.CyberwareProfileManager.getProfile(player, data);
+            if (profile == null || !profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.MANTIS_BLADES)) {
+                return;
+            }
+            syncMantisBlades(player, data, profile);
+        }
 
-            if (data == null) {
+        private static void syncMantisBlades(
+                Player player,
+                PlayerCyberwareData data,
+                com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile profile
+        ) {
+            if (player == null || player.level().isClientSide) {
+                return;
+            }
+
+            if (data == null || (profile != null && !profile.hasCapability(com.perigrine3.createcybernetics.common.scheduling.CyberwareLoadoutProfile.CapabilityFlag.MANTIS_BLADES))) {
                 removeAllMantisBladeModifiers(player);
                 clearTrackedState(player);
                 return;

@@ -35,13 +35,24 @@ public final class NeuropozyneHooks {
     }
 
     @SubscribeEvent
-    public static void onPlayerTick(PlayerTickEvent.Post event) {
-        Player player = event.getEntity();
-        if (player.level().isClientSide) return;
+    public static void onEffectRemoved(MobEffectEvent.Remove event) {
+        MobEffectInstance inst = event.getEffectInstance();
+        if (inst == null || !inst.is(ModEffects.NEUROPOZYNE)) return;
 
-        PlayerCyberwareData data = player.getData(ModAttachments.CYBERWARE);
+        if (event.getEntity() instanceof Player player && !player.level().isClientSide) {
+            PlayerCyberwareData data = player.getData(ModAttachments.CYBERWARE);
+            if (data != null) data.clearHumanityBonus();
+        }
+    }
+
+    @SubscribeEvent
+    public static void onCyberwareStateChange(com.perigrine3.createcybernetics.event.custom.CyberwareStateChangeEvent event) {
+        Player player = event.getPlayer();
+        if (player == null || player.level().isClientSide) return;
+
+        PlayerCyberwareData data = event.getData();
         if (data == null) return;
-        if (!hasNeuropozyne(player)) {
+        if (!player.hasEffect(ModEffects.NEUROPOZYNE)) {
             data.clearHumanityBonus();
         }
     }

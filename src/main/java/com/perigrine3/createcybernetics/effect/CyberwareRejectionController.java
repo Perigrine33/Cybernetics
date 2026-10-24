@@ -1,5 +1,7 @@
 package com.perigrine3.createcybernetics.effect;
 
+import com.perigrine3.createcybernetics.event.custom.CyberwareStateChangeEvent;
+import com.perigrine3.createcybernetics.common.scheduling.StaggeredTickScheduler;
 import com.perigrine3.createcybernetics.CreateCybernetics;
 import com.perigrine3.createcybernetics.common.capabilities.ModAttachments;
 import com.perigrine3.createcybernetics.common.capabilities.PlayerCyberwareData;
@@ -20,6 +22,13 @@ public final class CyberwareRejectionController {
     }
 
     @SubscribeEvent
+    public static void onCyberwareStateChange(CyberwareStateChangeEvent event) {
+        Player player = event.getPlayer();
+        if (player == null || player.level().isClientSide) return;
+        evaluateRejection(player, event.getData(), true);
+    }
+
+    @SubscribeEvent
     public static void onPlayerTick(PlayerTickEvent.Post event) {
         Player player = event.getEntity();
 
@@ -27,8 +36,16 @@ public final class CyberwareRejectionController {
             return;
         }
 
-        PlayerCyberwareData data = player.getData(ModAttachments.CYBERWARE);
+        boolean shouldRefresh = StaggeredTickScheduler.shouldRun(player, REFRESH_EVERY_TICKS, StaggeredTickScheduler.TickPhase.REJECTION_CHECK);
+        if (!shouldRefresh && !player.hasEffect(ModEffects.CYBERWARE_REJECTION)) {
+            return;
+        }
 
+        PlayerCyberwareData data = player.getData(ModAttachments.CYBERWARE);
+        evaluateRejection(player, data, shouldRefresh);
+    }
+
+    private static void evaluateRejection(Player player, PlayerCyberwareData data, boolean shouldRefresh) {
         if (data == null) {
             player.removeEffect(ModEffects.CYBERWARE_REJECTION);
             CyberpsychosisFugueController.clear(player);
@@ -48,7 +65,7 @@ public final class CyberwareRejectionController {
             return;
         }
 
-        if (player.tickCount % REFRESH_EVERY_TICKS == 0) {
+        if (shouldRefresh) {
             refreshRejectionEffect(player, severity);
         }
 

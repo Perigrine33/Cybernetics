@@ -399,8 +399,14 @@ public class CyberwareAttributeHelper {
         registerModifier("orangeshard_ore", new AttributeModifierData(oreMultiplierAttribute,
                 ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "orangeshard_ore_multiplier"),
                 1, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+        registerModifier("orangeshard_ore_2", new AttributeModifierData(oreMultiplierAttribute,
+                ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "orangeshard_ore_multiplier_2"),
+                1, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
         registerModifier("orangeshard_mining", new AttributeModifierData(miningSpeedAttribute,
                 ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "orangeshard_mining_speed"),
+                0.5, AttributeModifier.Operation.ADD_VALUE));
+        registerModifier("orangeshard_mining_2", new AttributeModifierData(miningSpeedAttribute,
+                ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "orangeshard_mining_speed_2"),
                 0.5, AttributeModifier.Operation.ADD_VALUE));
 
         registerModifier("yellowshard_haggling", new AttributeModifierData(hagglingAttribute,
@@ -741,10 +747,15 @@ public class CyberwareAttributeHelper {
         Holder<Attribute> attr = data.resolveAttribute();
         if (attr == null) return;
 
-        removeModifier(entity, modifierId);
-
         var inst = entity.getAttribute(attr);
         if (inst == null) return;
+
+        AttributeModifier existing = inst.getModifier(data.name);
+        if (existing != null
+                && Double.compare(existing.amount(), data.amount) == 0
+                && existing.operation() == data.operation) {
+            return;
+        }
 
         inst.addOrReplacePermanentModifier(new AttributeModifier(data.name, data.amount, data.operation));
     }
@@ -760,7 +771,7 @@ public class CyberwareAttributeHelper {
         if (attr == null) return;
 
         var inst = entity.getAttribute(attr);
-        if (inst == null) return;
+        if (inst == null || !inst.hasModifier(data.name)) return;
 
         inst.removeModifier(data.name);
     }
@@ -771,7 +782,7 @@ public class CyberwareAttributeHelper {
             if (attr == null) continue;
 
             var inst = entity.getAttribute(attr);
-            if (inst == null) continue;
+            if (inst == null || !inst.hasModifier(data.name)) continue;
 
             inst.removeModifier(data.name);
         }
@@ -796,6 +807,8 @@ public class CyberwareAttributeHelper {
         final ResourceLocation name;
         final double amount;
         final AttributeModifier.Operation operation;
+        @Nullable
+        private volatile Holder<Attribute> cachedResolvedAttribute;
 
         AttributeModifierData(Holder<Attribute> attribute, ResourceLocation name,
                               double amount, AttributeModifier.Operation operation) {
@@ -804,6 +817,7 @@ public class CyberwareAttributeHelper {
             this.name = name;
             this.amount = amount;
             this.operation = operation;
+            this.cachedResolvedAttribute = attribute;
         }
 
         AttributeModifierData(ResourceLocation attributeId, ResourceLocation name,
@@ -817,17 +831,23 @@ public class CyberwareAttributeHelper {
 
         @Nullable
         Holder<Attribute> resolveAttribute() {
+            Holder<Attribute> resolved = cachedResolvedAttribute;
+            if (resolved != null) return resolved;
             if (attribute != null) return attribute;
             if (attributeId == null) return null;
 
             var key = net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.ATTRIBUTE, attributeId);
-            return net.minecraft.core.registries.BuiltInRegistries.ATTRIBUTE.getHolder(key)
+            resolved = net.minecraft.core.registries.BuiltInRegistries.ATTRIBUTE.getHolder(key)
                     .map(h -> (Holder<Attribute>) h)
                     .orElse(null);
+            if (resolved != null) {
+                cachedResolvedAttribute = resolved;
+            }
+            return resolved;
         }
     }
 
-    public static void setPermanentModifier(
+    public static boolean setPermanentModifier(
             LivingEntity entity,
             Holder<Attribute> attribute,
             ResourceLocation modifierId,
@@ -835,33 +855,40 @@ public class CyberwareAttributeHelper {
             AttributeModifier.Operation operation
     ) {
         if (entity == null || attribute == null || modifierId == null || operation == null) {
-            return;
+            return false;
         }
 
         var instance = entity.getAttribute(attribute);
         if (instance == null) {
-            return;
+            return false;
         }
 
-        instance.removeModifier(modifierId);
+        AttributeModifier existing = instance.getModifier(modifierId);
+        if (existing != null
+                && Double.compare(existing.amount(), amount) == 0
+                && existing.operation() == operation) {
+            return false;
+        }
+
         instance.addOrReplacePermanentModifier(new AttributeModifier(modifierId, amount, operation));
+        return true;
     }
 
-    public static void removePermanentModifier(
+    public static boolean removePermanentModifier(
             LivingEntity entity,
             Holder<Attribute> attribute,
             ResourceLocation modifierId
     ) {
         if (entity == null || attribute == null || modifierId == null) {
-            return;
+            return false;
         }
 
         var instance = entity.getAttribute(attribute);
-        if (instance == null) {
-            return;
+        if (instance == null || !instance.hasModifier(modifierId)) {
+            return false;
         }
 
-        instance.removeModifier(modifierId);
+        return instance.removeModifier(modifierId);
     }
 
     public static int getIntValue(LivingEntity entity, Holder<Attribute> attribute, int fallback) {
