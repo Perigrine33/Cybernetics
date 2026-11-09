@@ -1,5 +1,6 @@
 package com.perigrine3.createcybernetics.screen.custom.arm_cannon;
 
+import com.perigrine3.createcybernetics.client.RadialMenuController;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.BufferUploader;
@@ -58,6 +59,7 @@ public class ArmCannonWheelScreen extends Screen {
     }
 
     public static void open(int segments) {
+        RadialMenuController.prepareToOpen(RadialMenuController.Wheel.ARM_CANNON);
         SEGMENTS = Math.max(1, segments);
         OPEN = true;
         SELECTED_INDEX = 0;

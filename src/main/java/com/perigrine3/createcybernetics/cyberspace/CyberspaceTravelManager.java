@@ -1,5 +1,6 @@
 package com.perigrine3.createcybernetics.cyberspace;
 
+import com.perigrine3.createcybernetics.CreateCybernetics;
 import com.perigrine3.createcybernetics.api.CyberwareSlot;
 import com.perigrine3.createcybernetics.api.InstalledCyberware;
 import com.perigrine3.createcybernetics.block.ModBlocks;
@@ -26,20 +27,28 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.TicketType;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+@EventBusSubscriber(modid = CreateCybernetics.MODID)
 public final class CyberspaceTravelManager {
     private static final String NBT_RETURN = "CreateCyberneticsCyberspaceReturn";
     private static final String NBT_DIMENSION = "Dimension";
@@ -72,8 +81,40 @@ public final class CyberspaceTravelManager {
     private static final Map<UUID, JackInProgress> JACK_IN_PROGRESS = new HashMap<>();
     private static final Map<UUID, JackOutProgress> UNSAFE_JACK_OUT_PROGRESS = new HashMap<>();
     private static final Map<UUID, JackOutProgress> JACK_OUT_PROGRESS = new HashMap<>();
+    private static final Map<UUID, PendingExit> PENDING_EXITS = new HashMap<>();
+    private static final TicketType<UUID> BODY_TICKET = TicketType.create(
+            "createcybernetics_body", Comparator.comparing(UUID::toString), 40);
+
+    private enum PendingExit { SAFE, UNSAFE, DEATH }
 
     private CyberspaceTravelManager() {}
+
+    @SubscribeEvent
+    public static void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
+        PENDING_EXITS.remove(event.getEntity().getUUID());
+    }
+
+    @SubscribeEvent
+    public static void onPlayerTick(PlayerTickEvent.Post event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        if (!player.level().dimension().equals(ModDimensions.CYBERSPACE_LEVEL) || !hasReturnPoint(player)) {
+            PENDING_EXITS.remove(player.getUUID());
+            return;
+        }
+
+        // Refresh a short-lived ticket so the physical body remains loaded.
+        // Entity loading after a reconnect is asynchronous, so retry pending exits on later ticks.
+        JackedInPlayerBodyEntity body = getStandInBody(player);
+        if (body == null) return;
+
+        PendingExit pending = PENDING_EXITS.remove(player.getUUID());
+        if (pending == null) return;
+        switch (pending) {
+            case SAFE -> safeJackOut(player);
+            case UNSAFE -> unsafeJackOut(player);
+            case DEATH -> handleCyberspaceDeath(player);
+        }
+    }
 
     public static void handleJackInHold(ServerPlayer player, boolean held) {
         if (player.level().dimension().equals(ModDimensions.CYBERSPACE_LEVEL)) {
@@ -374,6 +415,11 @@ public final class CyberspaceTravelManager {
 
         JackedInPlayerBodyEntity body = getStandInBody(player);
 
+        if (body == null) {
+            PENDING_EXITS.putIfAbsent(player.getUUID(), PendingExit.SAFE);
+            return false;
+        }
+
         double x = returnTag.getDouble(NBT_X);
         double y = returnTag.getDouble(NBT_Y);
         double z = returnTag.getDouble(NBT_Z);
@@ -479,6 +525,11 @@ public final class CyberspaceTravelManager {
 
         JackedInPlayerBodyEntity body = getStandInBody(player);
 
+        if (body == null) {
+            PENDING_EXITS.putIfAbsent(player.getUUID(), PendingExit.UNSAFE);
+            return false;
+        }
+
         double x = returnTag.getDouble(NBT_X);
         double y = returnTag.getDouble(NBT_Y);
         double z = returnTag.getDouble(NBT_Z);
@@ -551,6 +602,12 @@ public final class CyberspaceTravelManager {
         }
 
         JackedInPlayerBodyEntity body = getStandInBody(player);
+
+        if (body == null) {
+            PENDING_EXITS.put(player.getUUID(), PendingExit.DEATH);
+            player.setHealth(1.0F);
+            return true;
+        }
 
         double x = returnTag.getDouble(NBT_X);
         double y = returnTag.getDouble(NBT_Y);
@@ -713,6 +770,11 @@ public final class CyberspaceTravelManager {
         }
 
         UUID bodyUUID = returnTag.getUUID(NBT_BODY_UUID);
+
+        ChunkPos bodyChunk = new ChunkPos(BlockPos.containing(
+                returnTag.getDouble(NBT_X), returnTag.getDouble(NBT_Y), returnTag.getDouble(NBT_Z)));
+        returnLevel.getChunkSource().addRegionTicket(BODY_TICKET, bodyChunk, 2, bodyUUID);
+        returnLevel.getChunk(bodyChunk.x, bodyChunk.z);
 
         if (returnLevel.getEntity(bodyUUID) instanceof JackedInPlayerBodyEntity body) {
             return body;

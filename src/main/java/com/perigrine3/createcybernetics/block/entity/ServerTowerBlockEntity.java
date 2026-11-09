@@ -152,6 +152,14 @@ public class ServerTowerBlockEntity extends net.minecraft.world.level.block.enti
         CyberspaceDungeonSavedData data = CyberspaceDungeonSavedData.get(serverLevel.getServer());
 
         provisioningValid = data.registerProvisionedServer(serverId, serverLevel.dimension().location(), worldPosition);
+
+        // Structure templates may contain an ID already registered to another tower.
+        // Only provisioned towers reach this point; player-built towers stay unprovisioned.
+        if (!provisioningValid) {
+            serverId = UUID.randomUUID();
+            provisioningValid = data.registerProvisionedServer(serverId, serverLevel.dimension().location(), worldPosition);
+        }
+
         provisioningChecked = true;
 
         if (provisioningValid) {

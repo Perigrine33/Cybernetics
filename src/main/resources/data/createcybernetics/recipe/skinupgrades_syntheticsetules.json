@@ -2,7 +2,6 @@
   "type": "createcybernetics:engineering_table",
   "accept_mirrored": true,
   "category": "misc",
-
   "key": {
     "T": {
       "item": "createcybernetics:titaniumnugget"
@@ -14,7 +13,6 @@
       "item": "createcybernetics:skinupgrades_synthskin"
     }
   },
-
   "pattern": [
     "     ",
     "T T T",
@@ -22,8 +20,8 @@
     " N N ",
     "     "
   ],
-
   "result": {
     "count": 1,
     "id": "createcybernetics:skinupgrades_syntheticsetules"
+  }
 }

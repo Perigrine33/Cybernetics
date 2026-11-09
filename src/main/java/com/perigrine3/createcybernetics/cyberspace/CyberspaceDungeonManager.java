@@ -1,11 +1,20 @@
 package com.perigrine3.createcybernetics.cyberspace;
 
 import com.perigrine3.createcybernetics.block.ModBlocks;
+import com.perigrine3.createcybernetics.block.entity.DataCacheBlockEntity;
+import com.perigrine3.createcybernetics.item.ModItems;
 import com.perigrine3.createcybernetics.world.dimension.ModDimensions;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.AmethystClusterBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public final class CyberspaceDungeonManager {
@@ -18,6 +27,8 @@ public final class CyberspaceDungeonManager {
     private static final int TEMPORARY_ROOM_RADIUS = 8;
     private static final int TEMPORARY_ROOM_FLOOR_Y = 80;
     private static final int TEMPORARY_ROOM_HEIGHT = 8;
+    private static final int MIN_FRAGMENTS_PER_TYPE = 4;
+    private static final int MAX_FRAGMENTS_PER_TYPE = 8;
 
     private CyberspaceDungeonManager() {}
 
@@ -87,8 +98,52 @@ public final class CyberspaceDungeonManager {
         BlockPos accessNodePos = center.offset(0, 1, 6);
         level.setBlock(accessNodePos, ModBlocks.ACCESS_NODE.get().defaultBlockState(), 3);
 
+        BlockPos cachePos = center.above();
+        level.setBlock(cachePos, ModBlocks.DATA_CACHE.get().defaultBlockState(), Block.UPDATE_ALL);
+        if (level.getBlockEntity(cachePos) instanceof DataCacheBlockEntity cache) {
+            cache.setItem(0, new ItemStack(ModItems.MACROPROGRAM_DATA_MINER.get()));
+            cache.setChanged();
+        }
+
+        generateWallFragments(level, center);
+
         BlockPos entryPos = getDefaultEntryPosition(record.cellX(), record.cellZ());
 
         data.markGenerated(record.serverId(), entryPos);
     }
+
+    private static void generateWallFragments(ServerLevel level, BlockPos center) {
+        List<WallFragmentSpot> availableSpots = new ArrayList<>();
+
+        for (Direction wallDirection : Direction.Plane.HORIZONTAL) {
+            for (int offset = -TEMPORARY_ROOM_RADIUS + 2; offset <= TEMPORARY_ROOM_RADIUS - 2; offset++) {
+                for (int height = 1; height <= 3; height++) {
+                    BlockPos pos = center.relative(wallDirection, TEMPORARY_ROOM_RADIUS - 1)
+                            .relative(wallDirection.getClockWise(), offset)
+                            .above(height);
+                    if (level.isEmptyBlock(pos)) {
+                        availableSpots.add(new WallFragmentSpot(pos, wallDirection.getOpposite()));
+                    }
+                }
+            }
+        }
+
+        List<Block> fragmentTypes = List.of(
+                ModBlocks.TARGET_CODE_FRAGMENT.get(),
+                ModBlocks.FUNCTION_CODE_FRAGMENT.get(),
+                ModBlocks.MODIFIER_CODE_FRAGMENT.get());
+
+        for (Block fragment : fragmentTypes) {
+            int count = level.random.nextIntBetweenInclusive(MIN_FRAGMENTS_PER_TYPE, MAX_FRAGMENTS_PER_TYPE);
+            for (int i = 0; i < count && !availableSpots.isEmpty(); i++) {
+                WallFragmentSpot spot = availableSpots.remove(level.random.nextInt(availableSpots.size()));
+                BlockState state = fragment.defaultBlockState().setValue(AmethystClusterBlock.FACING, spot.facing());
+                if (state.canSurvive(level, spot.pos())) {
+                    level.setBlock(spot.pos(), state, Block.UPDATE_ALL);
+                }
+            }
+        }
+    }
+
+    private record WallFragmentSpot(BlockPos pos, Direction facing) {}
 }

@@ -13,8 +13,6 @@ public final class ArmCannonWheelClientHandlers {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player == null) return;
 
-            if (mc.screen != null) return;
-
             ArmCannonWheelScreen.open(msg.segments());
             ArmCannonWheelScreen.setPreselectedIndex(msg.selectedIndex());
         });

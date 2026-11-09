@@ -1,5 +1,6 @@
 package com.perigrine3.createcybernetics.screen.custom.toggle_wheel;
 
+import com.perigrine3.createcybernetics.client.RadialMenuController;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.BufferUploader;
@@ -52,6 +53,7 @@ public class CyberwareToggleWheelScreen extends Screen {
 
     @Override
     protected void init() {
+        RadialMenuController.prepareToOpen(RadialMenuController.Wheel.IMPLANTS);
         OPEN = true;
         SELECTED_INDEX = 0;
 

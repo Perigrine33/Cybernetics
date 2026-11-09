@@ -13,6 +13,9 @@
   "createcybernetics.configuration.durabilityDamageScale": "Durability Damage Scale",
   "createcybernetics.configuration.foodDurabilityRepairPerNutrition": "Food Durability Repair",
   "createcybernetics.configuration.foodRepairFatiguePerNutrition": "Food Repair Fatigue",
+  "createcybernetics.configuration.anvilRepairLow": "Low Default Anvil Repair",
+  "createcybernetics.configuration.anvilRepairModerate": "Moderate Default Anvil Repair",
+  "createcybernetics.configuration.anvilRepairHigh": "High Default Anvil Repair",
   "createcybernetics.configuration.minimumFoodRepairEfficiency": "Minimum Food Repair Efficiency",
   "createcybernetics.configuration.regenerationDurabilityRepair": "Regeneration Durability Repair",
   "createcybernetics.configuration.regenerationFatigueRecovery": "Regeneration Fatigue Recovery",
@@ -1338,6 +1341,7 @@
   "block.createcybernetics.computer": "Computer",
   "block.createcybernetics.computer_tower": "PC Tower",
   "block.createcybernetics.server_tower": "Server Tower",
+  "block.createcybernetics.server_tower_part": "Server Tower",
   "block.createcybernetics.machine_casing": "Machine Casing",
 
   "block.createcybernetics.datura_bush": "Datura Bush",
@@ -1528,6 +1532,7 @@
   "item.minecraft.potion.effect.neuropozyne_potion": "Potion of Neuropozyne",
   "item.minecraft.splash_potion.effect.neuropozyne_potion": "Splash Potion of Neuropozyne",
   "item.minecraft.lingering_potion.effect.neuropozyne_potion": "Lingering Potion of Neuropozyne",
+  "item.minecraft.tipped_arrow.effect.neuropozyne_potion": "Arrow of Neuropozyne",
 
   "effect.createcybernetics.neuropozyne": "Neuropozyne",
 

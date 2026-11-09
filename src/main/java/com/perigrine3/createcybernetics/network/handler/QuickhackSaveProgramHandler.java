@@ -7,6 +7,7 @@ import com.perigrine3.createcybernetics.common.quickhack.MicroprogramRegistry;
 import com.perigrine3.createcybernetics.common.quickhack.QuickhackProgramData;
 import com.perigrine3.createcybernetics.component.MicroprogramLibrary;
 import com.perigrine3.createcybernetics.item.ModItems;
+import com.perigrine3.createcybernetics.item.generic.MicroprogramCreativeShardItem;
 import com.perigrine3.createcybernetics.item.generic.MicroprogramDataShardItem;
 import com.perigrine3.createcybernetics.item.generic.QuickhackShardItem;
 import com.perigrine3.createcybernetics.network.payload.QuickhackSaveProgramPayload;
@@ -106,11 +107,19 @@ public final class QuickhackSaveProgramHandler {
         for (int slot = 0; slot < ComputerTowerBlockEntity.INVENTORY_SIZE; slot++) {
             ItemStack stack = tower.getItem(slot);
 
-            if (stack.isEmpty() || !stack.is(ModItems.DATA_SHARD_MICROPROGRAMS.get())) {
+            if (stack.isEmpty()) {
                 continue;
             }
 
-            MicroprogramLibrary library = MicroprogramDataShardItem.getLibrary(stack);
+            MicroprogramLibrary library;
+            if (stack.is(ModItems.DATA_SHARD_MICROPROGRAMS.get())) {
+                library = MicroprogramDataShardItem.getLibrary(stack);
+            } else if (stack.getItem() instanceof MicroprogramCreativeShardItem) {
+                library = MicroprogramCreativeShardItem.getLibrary(stack);
+            } else {
+                continue;
+            }
+
             availableMicroprograms.addAll(library.microprograms());
         }
 

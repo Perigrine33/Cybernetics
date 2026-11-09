@@ -1,5 +1,6 @@
 package com.perigrine3.createcybernetics.screen.custom.cyberdeck;
 
+import com.perigrine3.createcybernetics.client.RadialMenuController;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.BufferUploader;
@@ -67,6 +68,7 @@ public class MacroprogramWheelScreen extends Screen {
             return;
         }
 
+        RadialMenuController.prepareToOpen(RadialMenuController.Wheel.MACROPROGRAMS);
         OPEN = true;
         SELECTED_INDEX = 0;
         rebuildEntries(mc);
