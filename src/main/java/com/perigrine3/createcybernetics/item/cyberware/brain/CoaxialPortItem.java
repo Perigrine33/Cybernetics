@@ -43,6 +43,15 @@ public class CoaxialPortItem extends Item implements ICyberwareItem {
         return humanityCost;
     }
 
+    public boolean isDyeable(ItemStack stack, CyberwareSlot slot) {
+        return slot == CyberwareSlot.BRAIN;
+    }
+
+    @Override
+    public boolean isDyeable(ItemStack stack) {
+        return true;
+    }
+
     @Override
     public Set<CyberwareSlot> getSupportedSlots() {
         return Set.of(CyberwareSlot.BRAIN);

@@ -201,7 +201,6 @@ public class ModItemModelProvider extends ItemModelProvider {
             basicItem(ModItems.BONEUPGRADES_CAPACITORFRAME.get());
             basicItem(ModItems.BONEUPGRADES_PIEZO.get());
             basicItem(ModItems.BONEUPGRADES_SPINALINJECTOR.get());
-            basicItem(ModItems.BONEUPGRADES_SANDEVISTAN.get());
             basicItem(ModItems.BONEUPGRADES_CYBERSKULL.get());
         }
 
@@ -212,12 +211,10 @@ public class ModItemModelProvider extends ItemModelProvider {
             basicItem(ModItems.BRAINUPGRADES_ENDERJAMMER.get());
             basicItem(ModItems.BRAINUPGRADES_MATRIX.get());
             basicItem(ModItems.BRAINUPGRADES_NEURALCONTEXTUALIZER.get());
-            basicItem(ModItems.BRAINUPGRADES_CYBERDECK.get());
             basicItem(ModItems.BRAINUPGRADES_IDEM.get());
             basicItem(ModItems.BRAINUPGRADES_CHIPWARESLOTS.get());
             basicItem(ModItems.BRAINUPGRADES_NEURALPROCESSOR.get());
             basicItem(ModItems.BRAINUPGRADES_ICEPROTOCOL.get());
-            basicItem(ModItems.BRAINUPGRADES_COAXIALPORT.get());
             basicItem(ModItems.BRAINUPGRADES_KERENZIKOV.get());
             basicItem(ModItems.BRAINUPGRADES_BERSERK.get());
             basicItem(ModItems.BRAINUPGRADES_RAMDECK.get());

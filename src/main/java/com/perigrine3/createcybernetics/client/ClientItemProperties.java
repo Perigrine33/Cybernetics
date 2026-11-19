@@ -89,6 +89,12 @@ public final class ClientItemProperties {
 
             ItemProperties.register(ModItems.ARMUPGRADES_ARCCANNON.get(), ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "dyed"),
                     (stack, level, entity, seed) -> stack.has(DataComponents.DYED_COLOR) || SecondaryDyeColor.hasColor(stack) ? 1.0F : 0.0F);
+            ItemProperties.register(ModItems.BONEUPGRADES_SANDEVISTAN.get(), ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "dyed"),
+                    (stack, level, entity, seed) -> stack.has(DataComponents.DYED_COLOR) || SecondaryDyeColor.hasColor(stack) ? 1.0F : 0.0F);
+            ItemProperties.register(ModItems.BRAINUPGRADES_COAXIALPORT.get(), ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "dyed"),
+                    (stack, level, entity, seed) -> stack.has(DataComponents.DYED_COLOR) || SecondaryDyeColor.hasColor(stack) ? 1.0F : 0.0F);
+            ItemProperties.register(ModItems.BRAINUPGRADES_CYBERDECK.get(), ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "dyed"),
+                    (stack, level, entity, seed) -> stack.has(DataComponents.DYED_COLOR) || SecondaryDyeColor.hasColor(stack) ? 1.0F : 0.0F);
         });
     }
 }

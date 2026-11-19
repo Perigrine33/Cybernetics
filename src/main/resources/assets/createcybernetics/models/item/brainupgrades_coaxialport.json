@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "createcybernetics:item/brainupgrades_coaxialport",
+    "layer1": "createcybernetics:item/brainupgrades_coaxialport_mask"
+  }
+}

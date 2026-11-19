@@ -77,6 +77,7 @@ public record SharedNavigationTileUploadPayload(UUID networkId, String dimension
         context.enqueueWork(() -> {
             if (!(context.player() instanceof ServerPlayer player)) return;
 
+            if (!SharedNavigationServerManager.allowTileUpload(player)) return;
             UUID activeNetwork = SharedNavigationServerManager.findActiveNetwork(player);
 
             if (activeNetwork == null || !activeNetwork.equals(payload.networkId())) return;

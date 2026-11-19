@@ -17,7 +17,7 @@ public final class QuickhackProgramData {
     private static final String NBT_ID = "Id";
 
     public static final int MAX_PROGRAM_NODES = 10;
-    public static final int MAX_NAME_LENGTH = 32;
+    public static final int MAX_NAME_LENGTH = QuickhackNameSanitizer.MAX_LENGTH;
 
     private QuickhackProgramData() {}
 
@@ -154,19 +154,7 @@ public final class QuickhackProgramData {
     }
 
     public static String sanitizeName(String name) {
-        if (name == null) return "";
-
-        String sanitized = name.trim().replace(' ', '_').replaceAll("[^A-Za-z0-9_\\-]", "");
-
-        while (sanitized.contains("__")) {
-            sanitized = sanitized.replace("__", "_");
-        }
-
-        if (sanitized.length() > MAX_NAME_LENGTH) {
-            sanitized = sanitized.substring(0, MAX_NAME_LENGTH);
-        }
-
-        return sanitized;
+        return QuickhackNameSanitizer.sanitize(name);
     }
 
     private static List<MicroprogramDefinition> sanitizeNodes(List<MicroprogramDefinition> nodes) {

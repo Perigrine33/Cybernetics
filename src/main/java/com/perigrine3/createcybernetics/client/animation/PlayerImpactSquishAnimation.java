@@ -4,12 +4,20 @@ import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.util.Mth;
 
+
 public final class PlayerImpactSquishAnimation {
+
     private PlayerImpactSquishAnimation() {}
 
     public static void apply(PlayerModel<AbstractClientPlayer> model, AbstractClientPlayer player, float partialTick) {
-        float strength = PlayerImpactSquishClientState.getSquish(player, partialTick);
-        if (strength <= 0.0F) return;
+        apply(model, PlayerImpactSquishClientState.getSquish(player, partialTick));
+    }
+
+    static void apply(PlayerModel<?> model, float strength) {
+        PlayerAnimationPoseState.restoreEffect(model, PlayerAnimationPoseState.Effect.IMPACT_SQUISH);
+        if (strength <= 0.0F || PlayerAnimationPoseState.isFirstPerson(model)) return;
+
+        PlayerAnimationPoseState.beginEffect(model, PlayerAnimationPoseState.Effect.IMPACT_SQUISH);
 
         float bodyScaleY = Mth.lerp(strength, 1.0F, 0.45F);
         float limbScaleY = Mth.lerp(strength, 1.0F, 0.55F);
@@ -98,5 +106,10 @@ public final class PlayerImpactSquishAnimation {
         model.leftPants.xScale = model.leftLeg.xScale;
         model.leftPants.yScale = model.leftLeg.yScale;
         model.leftPants.zScale = model.leftLeg.zScale;
+    }
+
+    /** Restore the pre-squish pose, including scales (which PartPose does not store). */
+    public static void restore(PlayerModel<?> model) {
+        PlayerAnimationPoseState.restore(model);
     }
 }

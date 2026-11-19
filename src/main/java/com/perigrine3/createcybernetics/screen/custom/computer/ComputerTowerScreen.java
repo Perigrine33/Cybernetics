@@ -56,6 +56,10 @@ public class ComputerTowerScreen extends AbstractContainerScreen<ComputerTowerMe
     }
 
     @Override
+    protected void renderLabels(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+    }
+
+    @Override
     public void render(
             GuiGraphics guiGraphics,
             int mouseX,

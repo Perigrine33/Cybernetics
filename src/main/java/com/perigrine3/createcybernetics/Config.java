@@ -28,6 +28,12 @@ public final class Config {
             .comment("If true, cyberware will not drop and will persist through death.")
             .define("keepCyberware", false);
 
+    public static final ModConfigSpec.BooleanValue USE_FORGE_ENERGY = BUILDER
+            .comment("Use Forge Energy for Powered Machines")
+            .comment("If true, machines with power requirements use FE energy instead of redstone signals.")
+            .comment("If false, these machines operate using redstone signals instead of FE.")
+            .define("useForgeEnergy", false);
+
     public static final ModConfigSpec.BooleanValue SURGERY_DAMAGE_SCALING = BUILDER
             .comment("Scale Surgery Damage")
             .comment("If true, the surgery chamber will apply damage that scales with the amount of cyberware being removed.")

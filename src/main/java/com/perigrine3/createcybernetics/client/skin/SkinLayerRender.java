@@ -3,6 +3,7 @@ package com.perigrine3.createcybernetics.client.skin;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.perigrine3.createcybernetics.CreateCybernetics;
+import com.perigrine3.createcybernetics.client.animation.PlayerAnimationPoseState;
 import com.perigrine3.createcybernetics.client.CyberspaceColorConfigClient;
 import com.perigrine3.createcybernetics.client.render.CyberwareLimbHider;
 import com.perigrine3.createcybernetics.compat.bettercombat.BetterCombatCompat;
@@ -188,6 +189,7 @@ public final class SkinLayerRender {
             poseStack.pushPose();
 
             try {
+                PlayerAnimationPoseState.beginFirstPerson(model);
                 poseStack.scale(1.005F, 1.005F, 1.005F);
 
                 model.attackTime = 0.0F;
@@ -337,6 +339,7 @@ public final class SkinLayerRender {
                     }
                 }
             } finally {
+                PlayerAnimationPoseState.endFirstPerson(model);
                 RenderSystem.colorMask(true, true, true, true);
                 RenderSystem.defaultBlendFunc();
                 RenderSystem.disableBlend();

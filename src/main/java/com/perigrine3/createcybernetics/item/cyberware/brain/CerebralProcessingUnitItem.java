@@ -189,7 +189,7 @@ public class CerebralProcessingUnitItem extends Item implements ICyberwareItem {
             return;
         }
 
-        if (!isBoundToPlayerName(installedStack, player)) {
+        if (!isBoundToPlayer(installedStack, player)) {
             player.hurt(ModDamageSources.brainDamage(player.level(), player, null), 500000.0F);
         }
     }
@@ -555,17 +555,18 @@ public class CerebralProcessingUnitItem extends Item implements ICyberwareItem {
         return tag.getString(BiochipDataShardItem.TAG_OWNER_NAME);
     }
 
-    public static boolean isBoundToPlayerName(ItemStack stack, ServerPlayer player) {
-        if (!hasCompletedBiochipBinding(stack) || player == null) {
+    public static boolean isBoundToPlayer(ItemStack stack, ServerPlayer player) {
+        if (player == null || !hasCompletedBiochipBinding(stack)) {
             return false;
         }
 
-        String brainOwnerName = getBoundOwnerName(stack);
-        String playerName = player.getGameProfile().getName();
+        return CerebralOwnership.matches(true, getEngramUuid(stack), player.getUUID());
+    }
 
-        return !brainOwnerName.isBlank()
-                && !playerName.isBlank()
-                && brainOwnerName.equals(playerName);
+    /** @deprecated Use {@link #isBoundToPlayer(ItemStack, ServerPlayer)}; usernames are not ownership identifiers. */
+    @Deprecated
+    public static boolean isBoundToPlayerName(ItemStack stack, ServerPlayer player) {
+        return isBoundToPlayer(stack, player);
     }
 
     private static boolean hasMismatchedInstalledCyberbrain(PlayerCyberwareData data, ServerPlayer player) {
@@ -592,7 +593,7 @@ public class CerebralProcessingUnitItem extends Item implements ICyberwareItem {
                 continue;
             }
 
-            if (!isBoundToPlayerName(stack, player)) {
+            if (!isBoundToPlayer(stack, player)) {
                 return true;
             }
         }

@@ -5,7 +5,7 @@
       "type": "neoforge:compound",
       "ingredients": [
         {
-          "item": "createcybernetics:brainupgrades_scavenged_berserk"
+          "item": "createcybernetics:/scavenged_berserk"
         }
       ]
     }

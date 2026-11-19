@@ -24,9 +24,9 @@ public class ServerTowerBlockEntity extends net.minecraft.world.level.block.enti
     private static final String NBT_ENERGY = "Energy";
     private static final String NBT_PROVISIONED = "Provisioned";
 
-    public static final int ENERGY_CAPACITY = 5_000_000;
-    public static final int MAX_RECEIVE = 1_000_000;
-    public static final int ENERGY_USED_PER_TICK = 1_000_000;
+    public static final int ENERGY_CAPACITY = 1_000_000;
+    public static final int MAX_RECEIVE = 20_000;
+    public static final int ENERGY_USED_PER_TICK = 2_000;
 
     private UUID serverId = UUID.randomUUID();
 

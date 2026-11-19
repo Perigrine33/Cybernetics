@@ -157,12 +157,20 @@ public class SkinModifierManager {
             ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "textures/entity/sandevistan.png");
     private static final ResourceLocation SANDEVISTAN_HIGHLIGHT_TEXTURE =
             ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "textures/entity/sandevistan_highlight.png");
+    private static final ResourceLocation SANDEVISTAN_DYE1_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "textures/entity/sandevistan_dye1.png");
+    private static final ResourceLocation SANDEVISTAN_DYE2_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "textures/entity/sandevistan_dye2.png");
     private static final ResourceLocation DEPLOYABLE_ELYTRA_TEXTURE =
             ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "textures/entity/deployable_elytra.png");
     private static final ResourceLocation DEPLOYABLE_ELYTRA_HIGHLIGHT_TEXTURE =
             ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "textures/entity/deployable_elytra_highlight.png");
     private static final ResourceLocation CYBERDECK_TEXTURE =
             ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "textures/entity/cyberdeck.png");
+    private static final ResourceLocation CYBERDECK_DYE1 =
+            ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "textures/entity/cyberdeck_dye1.png");
+    private static final ResourceLocation CYBERDECK_DYE2 =
+            ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "textures/entity/cyberdeck_dye2.png");
     private static final ResourceLocation GILLS_TEXTURE =
             ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "textures/entity/gills.png");
     private static final ResourceLocation CHIPWARE_INACTIVE =
@@ -205,8 +213,10 @@ public class SkinModifierManager {
             ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "textures/entity/monovision.png");
     private static final ResourceLocation MONOVISION_HIGHLIGHT =
             ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "textures/entity/monovision_highlight.png");
-    private static final ResourceLocation MONOVISION_DYED =
-            ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "textures/entity/monovision_dyed.png");
+    private static final ResourceLocation MONOVISION_DYE1 =
+            ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "textures/entity/monovision_dye1.png");
+    private static final ResourceLocation MONOVISION_DYE2 =
+            ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "textures/entity/monovision_dye2.png");
     private static final ResourceLocation MULTIOPTICS1 =
             ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "textures/entity/multioptics1.png");
     private static final ResourceLocation MULTIOPTICS1_DYED =
@@ -237,6 +247,8 @@ public class SkinModifierManager {
             ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "textures/entity/coaxial_link_port_head_on.png");
     private static final ResourceLocation COAXIAL_PORT_HEAD_HIGHLIGHT =
             ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "textures/entity/coaxial_link_port_head_on_highlight.png");
+    private static final ResourceLocation COAXIAL_PORT_HEAD_DYE =
+            ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "textures/entity/coaxial_link_port_head_dye.png");
 
     private static final ResourceLocation SAMSON_EYES_DYED =
             ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "textures/entity/samson_eyes_dyed.png");
@@ -1801,14 +1813,40 @@ public class SkinModifierManager {
             state.clearModifiers();
             addTattooModifierIfLayer(state, player, TattooLayer.UNDER_CYBERWARE);
 
-            if (data.hasSpecificItem(ModItems.BASECYBERWARE_CYBEREYES.get(), CyberwareSlot.EYES)
-                    && data.isDyed(ModItems.BASECYBERWARE_CYBEREYES.get(), CyberwareSlot.EYES)) {
-                int tint = data.dyeColor(ModItems.BASECYBERWARE_CYBEREYES.get(), CyberwareSlot.EYES);
+            if (data.hasSpecificItem(ModItems.BASECYBERWARE_CYBEREYES.get(), CyberwareSlot.EYES)) {
+                boolean hasPrimaryDye = data.isDyed(ModItems.BASECYBERWARE_CYBEREYES.get(), CyberwareSlot.EYES);
+                boolean hasSecondaryDye = data.isSecondaryDyed(ModItems.BASECYBERWARE_CYBEREYES.get(), CyberwareSlot.EYES);
 
-                ResourceLocation dyn = CybereyeOverlayHandler.getOrBuildOverlay(player);
-                if (dyn != null) {
-                    state.addModifier(new SkinModifier(dyn, dyn, tint, false));
-                    state.addHighlight(new SkinHighlight(dyn, dyn, tint, true, true));
+                int primaryTint = hasPrimaryDye ? data.dyeColor(ModItems.BASECYBERWARE_CYBEREYES.get(), CyberwareSlot.EYES) : 0xFFFFFFFF;
+                int secondaryTint = hasSecondaryDye ? data.secondaryDyeColor(ModItems.BASECYBERWARE_CYBEREYES.get(), CyberwareSlot.EYES) : 0xFFFFFFFF;
+
+                if (hasPrimaryDye && hasSecondaryDye) {
+                    ResourceLocation primaryOverlay = CybereyeSecondaryOverlayHandler.getOrBuildPrimaryHighlight(player);
+                    ResourceLocation secondaryOverlay = CybereyeSecondaryOverlayHandler.getOrBuildSecondaryOverlay(player);
+
+                    if (primaryOverlay != null) {
+                        state.addModifier(new SkinModifier(primaryOverlay, primaryOverlay, primaryTint, false));
+                        state.addHighlight(new SkinHighlight(primaryOverlay, primaryOverlay, primaryTint, true, true));
+                    }
+
+                    if (secondaryOverlay != null) {
+                        state.addModifier(new SkinModifier(secondaryOverlay, secondaryOverlay, secondaryTint, false));
+                        state.addHighlight(new SkinHighlight(secondaryOverlay, secondaryOverlay, secondaryTint, true, true));
+                    }
+                } else if (hasPrimaryDye) {
+                    ResourceLocation dyn = CybereyeOverlayHandler.getOrBuildOverlay(player);
+
+                    if (dyn != null) {
+                        state.addModifier(new SkinModifier(dyn, dyn, primaryTint, false));
+                        state.addHighlight(new SkinHighlight(dyn, dyn, primaryTint, true, true));
+                    }
+                } else if (hasSecondaryDye) {
+                    ResourceLocation secondaryOverlay = CybereyeSecondaryOverlayHandler.getOrBuildSecondaryOverlay(player);
+
+                    if (secondaryOverlay != null) {
+                        state.addModifier(new SkinModifier(secondaryOverlay, secondaryOverlay, secondaryTint, false));
+                        state.addHighlight(new SkinHighlight(secondaryOverlay, secondaryOverlay, secondaryTint, true, true));
+                    }
                 }
             }
 
@@ -2139,11 +2177,11 @@ public class SkinModifierManager {
 
 
 
-
 // MONOVISION
         if (data.hasSpecificItem(ModItems.EYEUPGRADES_MONOVISION.get(), CyberwareSlot.EYES)) {
             ResourceLocation monovision = CybereyeOpticsOverlayHandler.getShifted(player, MONOVISION, CybereyeVisualConfig.OpticsType.MONOVISION);
-            ResourceLocation monovisionDyed = CybereyeOpticsOverlayHandler.getShifted(player, MONOVISION_DYED, CybereyeVisualConfig.OpticsType.MONOVISION);
+            ResourceLocation monovisionDyed = CybereyeOpticsOverlayHandler.getShifted(player, MONOVISION_DYE1, CybereyeVisualConfig.OpticsType.MONOVISION);
+            ResourceLocation monovisionSecondaryDyed = CybereyeOpticsOverlayHandler.getShifted(player, MONOVISION_DYE2, CybereyeVisualConfig.OpticsType.MONOVISION);
             ResourceLocation monovisionHighlight = CybereyeOpticsOverlayHandler.getShifted(player, MONOVISION_HIGHLIGHT, CybereyeVisualConfig.OpticsType.MONOVISION);
 
             state.addModifier(new SkinModifier(monovision, monovision,
@@ -2159,6 +2197,13 @@ public class SkinModifierManager {
             } else {
                 state.addHighlight(new SkinHighlight(monovisionHighlight, monovisionHighlight,
                         0xFFFFFFFF, true, true));
+            }
+
+            if (data.isSecondaryDyed(ModItems.EYEUPGRADES_MONOVISION.get(), CyberwareSlot.EYES)) {
+                int tint = data.secondaryDyeColor(ModItems.EYEUPGRADES_MONOVISION.get(), CyberwareSlot.EYES);
+
+                state.addModifier(new SkinModifier(monovisionSecondaryDyed, monovisionSecondaryDyed,
+                        tint, false));
             }
         }
 
@@ -2310,9 +2355,27 @@ public class SkinModifierManager {
         if (data.hasSpecificItem(ModItems.BONEUPGRADES_SANDEVISTAN.get(), CyberwareSlot.BONE)) {
             state.addModifier(new SkinModifier(SANDEVISTAN_TEXTURE, SANDEVISTAN_TEXTURE,
                     0xFFFFFFFF, false));
-            SkinHighlightRender.apply(state, true, SANDEVISTAN_HIGHLIGHT_TEXTURE, SANDEVISTAN_HIGHLIGHT_TEXTURE,
-                    0xFFFFFFFF, true);
+
+            if (data.isDyed(ModItems.BONEUPGRADES_SANDEVISTAN.get(), CyberwareSlot.BONE)) {
+                int tint = data.dyeColor(ModItems.BONEUPGRADES_SANDEVISTAN.get(), CyberwareSlot.BONE);
+
+                state.addModifier(new SkinModifier(SANDEVISTAN_DYE1_TEXTURE, SANDEVISTAN_DYE1_TEXTURE,
+                        tint, false));
+                state.addHighlight(new SkinHighlight(SANDEVISTAN_DYE1_TEXTURE, SANDEVISTAN_DYE1_TEXTURE,
+                        tint, true, true));
+            } else {
+                SkinHighlightRender.apply(state, true, SANDEVISTAN_HIGHLIGHT_TEXTURE, SANDEVISTAN_HIGHLIGHT_TEXTURE,
+                        0xFFFFFFFF, true);
+            }
+
+            if (data.isSecondaryDyed(ModItems.BONEUPGRADES_SANDEVISTAN.get(), CyberwareSlot.BONE)) {
+                int tint = data.secondaryDyeColor(ModItems.BONEUPGRADES_SANDEVISTAN.get(), CyberwareSlot.BONE);
+
+                state.addModifier(new SkinModifier(SANDEVISTAN_DYE2_TEXTURE, SANDEVISTAN_DYE2_TEXTURE,
+                        tint, false));
+            }
         }
+
 // MAGIC CATALYST
         if (data.hasSpecificItem(ModItems.ORGANSUPGRADES_MAGICCATALYST.get(), CyberwareSlot.HEART)) {
             state.addModifier(new SkinModifier(MAGIC_CATALYST, MAGIC_CATALYST,
@@ -2364,12 +2427,35 @@ public class SkinModifierManager {
             state.addModifier(new SkinModifier(FLYWHEEL_RARM_WIDE, FLYWHEEL_RARM_SLIM,
                     0xFFFFFFFF, false));
         }
+
 // CYBERDECK
         if (data.hasSpecificItem(ModItems.BRAINUPGRADES_CYBERDECK.get(), CyberwareSlot.BRAIN)) {
+            boolean primaryDyed = data.isDyed(ModItems.BRAINUPGRADES_CYBERDECK.get(), CyberwareSlot.BRAIN);
+            boolean secondaryDyed = data.isSecondaryDyed(ModItems.BRAINUPGRADES_CYBERDECK.get(), CyberwareSlot.BRAIN);
+
             state.addModifier(new SkinModifier(CYBERDECK_TEXTURE, CYBERDECK_TEXTURE,
                     0xFFFFFFFF, false));
-            state.addHighlight(new SkinHighlight(CYBERDECK_TEXTURE, CYBERDECK_TEXTURE,
-                    0xFFFFFFFF, true));
+
+            if (!primaryDyed && !secondaryDyed) {
+                state.addHighlight(new SkinHighlight(CYBERDECK_TEXTURE, CYBERDECK_TEXTURE,
+                        0xFFFFFFFF, true));
+            }
+
+            if (primaryDyed) {
+                int tint = data.dyeColor(ModItems.BRAINUPGRADES_CYBERDECK.get(), CyberwareSlot.BRAIN);
+
+                state.addModifier(new SkinModifier(CYBERDECK_DYE1, CYBERDECK_DYE1,
+                        tint, false));
+            }
+
+            if (secondaryDyed) {
+                int tint = data.secondaryDyeColor(ModItems.BRAINUPGRADES_CYBERDECK.get(), CyberwareSlot.BRAIN);
+
+                state.addModifier(new SkinModifier(CYBERDECK_DYE2, CYBERDECK_DYE2,
+                        tint, false));
+                state.addHighlight(new SkinHighlight(CYBERDECK_DYE2, CYBERDECK_DYE2,
+                        tint, true, true));
+            }
         }
 // COAXIAL PORT
         if (data.hasSpecificItem(ModItems.BRAINUPGRADES_COAXIALPORT.get(), CyberwareSlot.BRAIN)) {
@@ -2380,6 +2466,12 @@ public class SkinModifierManager {
 
             state.addModifier(new SkinModifier(coaxialTexture, coaxialTexture,
                     0xFFFFFFFF, false));
+
+            if (data.isDyed(ModItems.BRAINUPGRADES_COAXIALPORT.get(), CyberwareSlot.BRAIN)) {
+                int tint = data.dyeColor(ModItems.BRAINUPGRADES_COAXIALPORT.get(), CyberwareSlot.BRAIN);
+                state.addModifier(new SkinModifier(COAXIAL_PORT_HEAD_DYE, COAXIAL_PORT_HEAD_DYE,
+                        tint, false));
+            }
 
             state.addHighlight(new SkinHighlight(COAXIAL_PORT_HEAD_HIGHLIGHT, COAXIAL_PORT_HEAD_HIGHLIGHT,
                     0xFFFFFFFF, true));

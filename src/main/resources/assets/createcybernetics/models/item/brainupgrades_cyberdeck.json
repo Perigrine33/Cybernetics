@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "createcybernetics:item/brainupgrades_cyberdeck",
+    "layer1": "createcybernetics:item/brainupgrades_cyberdeck_mask",
+    "layer2": "createcybernetics:item/brainupgrades_cyberdeck_mask2"
+  }
+}

@@ -3,9 +3,6 @@
   "inputs": [
     {
       "item": "createcybernetics:skinupgrades_empthreading"
-    },
-    {
-      "item": "createcybernetics:scavenged_empthreading"
     }
   ],
   "outputs": [

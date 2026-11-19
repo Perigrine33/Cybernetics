@@ -17,6 +17,9 @@ public final class ConfigValues {
     /** Keep Cyberware on Death. */
     public static boolean KEEP_CYBERWARE = false;
 
+    /** Whether machines using ConditionalBlockPower require FE instead of redstone. */
+    public static boolean USE_FORGE_ENERGY = false;
+
     /** Surgery Damage Scaling. */
     public static boolean SURGERY_DAMAGE_SCALING = false;
 

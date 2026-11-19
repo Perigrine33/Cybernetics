@@ -13,7 +13,12 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.common.EffectCures;
+import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
 
+@EventBusSubscriber(modid = CreateCybernetics.MODID)
 public class SynapseBurnoutEffect extends MobEffect {
     private static final float MIN_INITIAL_DAMAGE = 8.0F;
     private static final float MAX_INITIAL_DAMAGE = 12.0F;
@@ -26,6 +31,14 @@ public class SynapseBurnoutEffect extends MobEffect {
 
     private static final double MIN_SPARK_SPEED = 0.32D;
     private static final double MAX_SPARK_SPEED = 0.72D;
+
+    @SubscribeEvent
+    public static void preventMilkCure(MobEffectEvent.Remove event) {
+        // Also protect instances saved before milk immunity was introduced.
+        if (event.getCure() == EffectCures.MILK && event.getEffect().equals(ModEffects.SYNAPSE_BURNOUT)) {
+            event.setCanceled(true);
+        }
+    }
 
     public SynapseBurnoutEffect(MobEffectCategory category, int color) {
         super(category, color);

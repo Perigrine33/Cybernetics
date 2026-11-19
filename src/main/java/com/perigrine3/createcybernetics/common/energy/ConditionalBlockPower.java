@@ -1,51 +1,21 @@
+
 package com.perigrine3.createcybernetics.common.energy;
 
+import com.perigrine3.createcybernetics.ConfigValues;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
-import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.energy.IEnergyStorage;
-
-import java.util.Set;
 
 public final class ConditionalBlockPower {
     private ConditionalBlockPower() {
     }
 
-    //List of mods that use alt energy (FE & RF)
-    private static final Set<String> TECH_ENERGY_MOD_IDS = Set.of(
-            "mekanism",
-            "thermal",
-            "immersiveengineering",
-            "powah",
-            "enderio",
-            "rftoolsbase",
-            "rftoolspower",
-            "fluxnetworks",
-            "industrialforegoing",
-            "ae2",
-            "createaddition",
-            "create_new_age",
-            "modern_industrialization",
-            "powergrid",
-            "oritech",
-            "industrialupgrade",
-            "electroenergetics"
-    );
-
     public static boolean hasTechEnergyModLoaded() {
-        ModList modList = ModList.get();
-
-        for (String modId : TECH_ENERGY_MOD_IDS) {
-            if (modList.isLoaded(modId)) {
-                return true;
-            }
-        }
-
-        return false;
+        return shouldUseEnergyInsteadOfRedstone();
     }
 
     public static boolean shouldUseEnergyInsteadOfRedstone() {
-        return hasTechEnergyModLoaded();
+        return ConfigValues.USE_FORGE_ENERGY;
     }
 
     public static boolean hasRedstonePower(Level level, BlockPos pos) {

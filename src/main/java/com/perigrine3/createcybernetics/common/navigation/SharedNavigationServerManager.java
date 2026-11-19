@@ -34,6 +34,28 @@ public final class SharedNavigationServerManager {
     private SharedNavigationServerManager() {}
 
     private static final int PLAYER_SYNC_INTERVAL = 20;
+    private record TileKey(UUID network, String dimension, int x, int z) {}
+    private static final Map<UUID, java.util.Iterator<SharedNavigationMapData.SharedTile>> FULL_SYNCS = new java.util.LinkedHashMap<>();
+    private static final Map<UUID, Set<TileKey>> DELIVERIES = new java.util.LinkedHashMap<>();
+    private static final Map<UUID, Integer> LAST_UPLOAD_TICK = new HashMap<>();
+    private static int roundRobin;
+    private static final Map<UUID, java.util.Iterator<SharedNavigationMapData.SharedWaypoint>> WAYPOINT_SYNCS = new HashMap<>();
+
+    public static boolean allowTileUpload(ServerPlayer player) {
+        int tick = player.getServer().getTickCount();
+        Integer previous = LAST_UPLOAD_TICK.put(player.getUUID(), tick);
+        return previous == null || previous != tick;
+    }
+
+    @SubscribeEvent
+    public static void onServerStopped(net.neoforged.neoforge.event.server.ServerStoppedEvent event) {
+        LAST_PLAYER_NETWORKS.clear();
+        FORCE_FULL_SYNC_NETWORKS.clear();
+        FULL_SYNCS.clear();
+        WAYPOINT_SYNCS.clear();
+        DELIVERIES.clear();
+        LAST_UPLOAD_TICK.clear();
+    }
 
     private static final Map<UUID, UUID> LAST_PLAYER_NETWORKS = new HashMap<>();
     private static final Set<UUID> FORCE_FULL_SYNC_NETWORKS = new HashSet<>();
@@ -45,14 +67,19 @@ public final class SharedNavigationServerManager {
         if (server.getTickCount() % PLAYER_SYNC_INTERVAL == 0) {
             syncPlayers(server);
         }
+        flushTiles(server);
     }
 
     private static void syncPlayers(MinecraftServer server) {
         Map<UUID, List<ServerPlayer>> networkMembers = collectNetworkMembers(server);
         Map<UUID, UUID> currentPlayerNetworks = new HashMap<>();
+        Map<UUID, List<SharedNavigationPlayersPayload.SharedPlayerData>> positions = new HashMap<>();
 
         for (Map.Entry<UUID, List<ServerPlayer>> entry : networkMembers.entrySet()) {
+            List<SharedNavigationPlayersPayload.SharedPlayerData> list = new ArrayList<>();
+            positions.put(entry.getKey(), list);
             for (ServerPlayer member : entry.getValue()) {
+                list.add(new SharedNavigationPlayersPayload.SharedPlayerData(member.getUUID(), member.getGameProfile().getName(), member.level().dimension().location().toString(), member.getX(), member.getY(), member.getZ(), member.getYRot()));
                 currentPlayerNetworks.put(member.getUUID(), entry.getKey());
             }
         }
@@ -72,12 +99,7 @@ public final class SharedNavigationServerManager {
                 continue;
             }
 
-            List<ServerPlayer> members = networkMembers.get(currentNetwork);
-            List<SharedNavigationPlayersPayload.SharedPlayerData> playerData = new ArrayList<>(members.size());
-
-            for (ServerPlayer member : members) {
-                playerData.add(new SharedNavigationPlayersPayload.SharedPlayerData(member.getUUID(), member.getGameProfile().getName(), member.level().dimension().location().toString(), member.getX(), member.getY(), member.getZ(), member.getYRot()));
-            }
+            var playerData = positions.get(currentNetwork);
 
             boolean networkChanged = !currentNetwork.equals(previousNetwork);
             boolean forceFullSync = forcedNetworks.contains(currentNetwork);
@@ -93,6 +115,10 @@ public final class SharedNavigationServerManager {
             }
         }
 
+        FULL_SYNCS.keySet().retainAll(currentPlayerNetworks.keySet());
+        WAYPOINT_SYNCS.keySet().retainAll(currentPlayerNetworks.keySet());
+        DELIVERIES.keySet().retainAll(currentPlayerNetworks.keySet());
+        LAST_UPLOAD_TICK.keySet().retainAll(currentPlayerNetworks.keySet());
         LAST_PLAYER_NETWORKS.clear();
         LAST_PLAYER_NETWORKS.putAll(currentPlayerNetworks);
     }
@@ -100,31 +126,63 @@ public final class SharedNavigationServerManager {
     private static void sendFullMap(ServerPlayer player, UUID networkId) {
         SharedNavigationMapData data = SharedNavigationMapData.get(player.getServer());
 
-        for (SharedNavigationMapData.SharedTile tile : data.getTiles(networkId)) {
-            PacketDistributor.sendToPlayer(player, new SharedNavigationTileSyncPayload(tile.dimension(), tile.tileX(), tile.tileZ(), tile.colors().clone(), tile.explored().toLongArray()));
-        }
+        DELIVERIES.remove(player.getUUID());
+        FULL_SYNCS.put(player.getUUID(), data.getTiles(networkId).iterator());
 
-        for (SharedNavigationMapData.SharedWaypoint waypoint : data.getWaypoints(networkId)) {
-            PacketDistributor.sendToPlayer(player, new SharedNavigationWaypointSyncPayload(waypoint.id(), waypoint.dimension(), waypoint.x(), waypoint.y(), waypoint.z(), waypoint.name(), waypoint.color(), waypoint.type()));
-        }
+        WAYPOINT_SYNCS.put(player.getUUID(), data.getWaypoints(networkId).iterator());
     }
 
     public static void broadcastTileUpdate(MinecraftServer server, UUID networkId, String dimension, int tileX, int tileZ) {
         if (server == null || networkId == null) return;
 
-        SharedNavigationMapData data = SharedNavigationMapData.get(server);
-        SharedNavigationMapData.SharedTile tile = data.getTile(networkId, dimension, tileX, tileZ);
-
-        if (tile == null) return;
-
-        SharedNavigationTileSyncPayload payload = new SharedNavigationTileSyncPayload(tile.dimension(), tile.tileX(), tile.tileZ(), tile.colors().clone(), tile.explored().toLongArray());
-
+        TileKey key = new TileKey(networkId, dimension, tileX, tileZ);
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            UUID playerNetwork = findActiveNetwork(player);
+            if (!networkId.equals(LAST_PLAYER_NETWORKS.get(player.getUUID()))) continue;
+            Set<TileKey> queue = DELIVERIES.computeIfAbsent(player.getUUID(), ignored -> new java.util.LinkedHashSet<>());
+            if (queue.size() >= 256) {
+                queue.clear();
+                FULL_SYNCS.put(player.getUUID(), SharedNavigationMapData.get(server).getTiles(networkId).iterator());
+            } else queue.add(key);
+        }
+    }
 
-            if (!networkId.equals(playerNetwork)) continue;
-
-            PacketDistributor.sendToPlayer(player, payload);
+    // At most eight terrain tiles (~128 KiB before compression) per tick globally,
+    // and two per player. Rotate the first recipient to keep large histories fair.
+    private static void flushTiles(MinecraftServer server) {
+        List<ServerPlayer> players = server.getPlayerList().getPlayers();
+        if (players.isEmpty() || (FULL_SYNCS.isEmpty() && DELIVERIES.isEmpty() && WAYPOINT_SYNCS.isEmpty())) return;
+        int budget = 8;
+        int start = Math.floorMod(roundRobin++, players.size());
+        SharedNavigationMapData data = SharedNavigationMapData.get(server);
+        for (int offset = 0; offset < players.size() && budget > 0; offset++) {
+            ServerPlayer player = players.get((start + offset) % players.size());
+            UUID network = LAST_PLAYER_NETWORKS.get(player.getUUID());
+            if (network == null || !hasFunctioningNavigationChip(player)) continue;
+            var waypoints = WAYPOINT_SYNCS.get(player.getUUID());
+            for (int count = 0; count < 8 && waypoints != null && waypoints.hasNext(); count++) {
+                var waypoint = waypoints.next();
+                PacketDistributor.sendToPlayer(player, new SharedNavigationWaypointSyncPayload(waypoint.id(), waypoint.dimension(), waypoint.x(), waypoint.y(), waypoint.z(), waypoint.name(), waypoint.color(), waypoint.type()));
+            }
+            if (waypoints != null && !waypoints.hasNext()) WAYPOINT_SYNCS.remove(player.getUUID());
+            for (int count = 0; count < 2 && budget > 0; count++) {
+                SharedNavigationMapData.SharedTile tile = null;
+                Set<TileKey> queue = DELIVERIES.get(player.getUUID());
+                if (queue != null && !queue.isEmpty()) {
+                    var keys = queue.iterator();
+                    TileKey key = keys.next();
+                    keys.remove();
+                    if (queue.isEmpty()) DELIVERIES.remove(player.getUUID());
+                    if (key.network().equals(network)) tile = data.getTile(network, key.dimension(), key.x(), key.z());
+                } else {
+                    var history = FULL_SYNCS.get(player.getUUID());
+                    if (history != null && history.hasNext()) tile = history.next();
+                    if (history != null && !history.hasNext()) FULL_SYNCS.remove(player.getUUID());
+                }
+                if (tile != null) {
+                    PacketDistributor.sendToPlayer(player, new SharedNavigationTileSyncPayload(tile.dimension(), tile.tileX(), tile.tileZ(), tile.colors().clone(), tile.explored().toLongArray()));
+                    budget--;
+                }
+            }
         }
     }
 

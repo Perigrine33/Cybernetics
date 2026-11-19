@@ -3,9 +3,6 @@
   "inputs": [
     {
       "item": "createcybernetics:boneupgrades_cyberskull"
-    },
-    {
-      "item": "createcybernetics:scavenged_cyberskull"
     }
   ],
   "outputs": [

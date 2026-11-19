@@ -29,6 +29,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
@@ -43,6 +45,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
@@ -280,6 +283,18 @@ public final class CyberspaceTravelManager {
 
         CyberwareToggleController.forceAllToggleablesInactiveForCyberspace(player);
 
+        // The physical body owns these effects while the player is jacked in.
+        float physicalHealth = body.getHealth();
+        float physicalMaxHealth = body.getMaxHealth();
+        moveEffects(player, body);
+        // initializeFromPlayer already included effect-derived maximum health.
+        // Avoid counting Health Boost twice when adding its attribute modifier.
+        var maxHealth = body.getAttribute(Attributes.MAX_HEALTH);
+        if (maxHealth != null) {
+            maxHealth.setBaseValue(maxHealth.getBaseValue() - (body.getMaxHealth() - physicalMaxHealth));
+        }
+        body.setHealth(physicalHealth);
+
         CompoundTag returnTag = player.getPersistentData().getCompound(NBT_RETURN);
         returnTag.putUUID(NBT_SERVER_TOWER_ID, towerId);
         returnTag.putString(NBT_SERVER_TOWER_DIMENSION, towerDimension.toString());
@@ -447,6 +462,7 @@ public final class CyberspaceTravelManager {
 
         player.teleportTo(returnLevel, x, y, z, yaw, pitch);
         player.fallDistance = 0.0F;
+        restoreBodyEffects(player, body);
         player.setHealth(Math.min(player.getMaxHealth(), bodyHealth));
 
         if (body != null) {
@@ -556,6 +572,7 @@ public final class CyberspaceTravelManager {
 
         player.teleportTo(returnLevel, x, y, z, yaw, pitch);
         player.fallDistance = 0.0F;
+        restoreBodyEffects(player, body);
         player.setHealth(Math.min(player.getMaxHealth(), bodyHealth));
 
         if (body != null) {
@@ -635,6 +652,7 @@ public final class CyberspaceTravelManager {
 
         player.teleportTo(returnLevel, x, y, z, yaw, pitch);
         player.fallDistance = 0.0F;
+        restoreBodyEffects(player, body);
         player.setHealth(Math.max(1.0F, Math.min(player.getMaxHealth(), bodyHealth)));
 
         if (body != null) {
@@ -692,6 +710,8 @@ public final class CyberspaceTravelManager {
         player.teleportTo(returnLevel, x, y, z, yaw, pitch);
         player.fallDistance = 0.0F;
 
+        restoreBodyEffects(player, body);
+
         persistentData.remove(NBT_RETURN);
 
         applySynapseBurnout(player);
@@ -711,6 +731,21 @@ public final class CyberspaceTravelManager {
 
     public static void applySynapseBurnout(ServerPlayer player) {
         player.addEffect(new MobEffectInstance(ModEffects.SYNAPSE_BURNOUT, SYNAPSE_BURNOUT_DURATION, 0, false, false, true));
+    }
+
+    private static void restoreBodyEffects(ServerPlayer player, JackedInPlayerBodyEntity body) {
+        player.removeAllEffects();
+        if (body != null) moveEffects(body, player);
+    }
+
+    private static void moveEffects(LivingEntity source, LivingEntity destination) {
+        // Move the original instances after detaching them, preserving hidden
+        // weaker effects too (the vanilla copy constructor drops that chain).
+        var effects = new ArrayList<>(source.getActiveEffects());
+        source.removeAllEffects();
+        for (MobEffectInstance effect : effects) {
+            destination.addEffect(effect);
+        }
     }
 
     private static JackedInPlayerBodyEntity createStandInBody(ServerPlayer player) {

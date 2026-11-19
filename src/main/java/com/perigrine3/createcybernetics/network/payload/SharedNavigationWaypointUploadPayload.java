@@ -47,7 +47,7 @@ public record SharedNavigationWaypointUploadPayload(UUID networkId, String id, S
             if (payload.dimension() == null || payload.dimension().isBlank() || payload.dimension().length() > 256) return;
             if (payload.name() == null || payload.name().length() > 256) return;
             if (payload.waypointType() == null) return;
-            if (!payload.waypointType().equals("BANNER") && !payload.waypointType().equals("MAP_BANNER") && !payload.waypointType().equals("EXPLORER")) return;
+            if (!payload.waypointType().equals("BANNER") && !payload.waypointType().equals("MAP_BANNER") && !payload.waypointType().equals("EXPLORER") && !payload.waypointType().equals("CUSTOM")) return;
 
             SharedNavigationMapData data = SharedNavigationMapData.get(player.getServer());
 

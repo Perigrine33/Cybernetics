@@ -22,7 +22,9 @@ public final class HeavyKnucklesClientAnimation {
     private HeavyKnucklesClientAnimation() {}
 
     public static void applyThirdPerson(PlayerModel<?> model, AbstractClientPlayer player, float ageInTicks) {
-        if (model == null || player == null) {
+        if (model == null) return;
+        PlayerAnimationPoseState.restoreEffect(model, PlayerAnimationPoseState.Effect.HEAVY_KNUCKLES);
+        if (player == null || PlayerAnimationPoseState.isFirstPerson(model)) {
             return;
         }
 
@@ -34,34 +36,17 @@ public final class HeavyKnucklesClientAnimation {
 
         if (smashProgress >= 0.0F) {
             applySmash(model, smashProgress);
-            syncOuterLayers(model);
             return;
         }
 
         if (HeavyKnucklesItem.canSmash(player)) {
             applyRaiseArms(model, player);
-            syncOuterLayers(model);
         }
     }
 
+    /** Retained for compatibility; Heavy Knuckles never poses first-person arms. */
     public static void applyFirstPersonArm(AbstractClientPlayer player, ModelPart part, HumanoidArm arm) {
-        if (player == null || part == null || arm == null) {
-            return;
-        }
-
-        updateSmashState(player, 0.0F);
-
-        float smashProgress = getSmashProgress(player, 0.0F);
-
-        if (smashProgress >= 0.0F) {
-            applySmashArm(part, smashProgress);
-            return;
-        }
-
-        if (HeavyKnucklesItem.canSmash(player)) {
-            float raiseProgress = getRaiseProgress(player);
-            part.xRot = Mth.lerp(raiseProgress, part.xRot, degrees(-135.0F));
-        }
+        if (part != null) PlayerAnimationPoseState.restoreHand(part);
     }
 
     private static void updateSmashState(AbstractClientPlayer player, float partialTick) {
@@ -83,7 +68,7 @@ public final class HeavyKnucklesClientAnimation {
         LAST_ATTACK_PROGRESS.put(id, attackProgress);
 
         Integer startTick = SMASH_START_TICK.get(id);
-        if (startTick != null && player.tickCount - startTick > SMASH_DURATION_TICKS) {
+        if (startTick != null && (player.tickCount < startTick || player.tickCount - startTick > SMASH_DURATION_TICKS)) {
             SMASH_START_TICK.remove(id);
         }
     }
@@ -104,11 +89,16 @@ public final class HeavyKnucklesClientAnimation {
     }
 
     private static void applyRaiseArms(PlayerModel<?> model, AbstractClientPlayer player) {
-        float progress = getRaiseProgress(player);
+        applyRaisePose(model, getRaiseProgress(player));
+    }
+
+    static void applyRaisePose(PlayerModel<?> model, float progress) {
+        PlayerAnimationPoseState.beginEffect(model, PlayerAnimationPoseState.Effect.HEAVY_KNUCKLES);
         float raised = degrees(-135.0F);
 
         model.rightArm.xRot = Mth.lerp(progress, model.rightArm.xRot, raised);
         model.leftArm.xRot = Mth.lerp(progress, model.leftArm.xRot, raised);
+        syncOuterLayers(model);
     }
 
     private static float getRaiseProgress(AbstractClientPlayer player) {
@@ -116,7 +106,8 @@ public final class HeavyKnucklesClientAnimation {
         return Mth.clamp(distance / RAISE_DISTANCE, 0.0F, 1.0F);
     }
 
-    private static void applySmash(PlayerModel<?> model, float time) {
+    static void applySmash(PlayerModel<?> model, float time) {
+        PlayerAnimationPoseState.beginEffect(model, PlayerAnimationPoseState.Effect.HEAVY_KNUCKLES);
         float headRotation = sampleFour(time, 0.0F, 0.0F, 0.05F, 22.5F, 0.10F, 22.5F, 0.25F, 0.0F);
         float bodyRotation = sampleFour(time, 0.0F, 0.0F, 0.05F, 37.5F, 0.10F, 37.5F, 0.25F, 0.0F);
         float armRotation = sampleFour(time, 0.0F, -135.0F, 0.05F, -62.5F, 0.10F, -52.5F, 0.25F, 0.0F);
@@ -145,16 +136,12 @@ public final class HeavyKnucklesClientAnimation {
         model.leftArm.xRot = degrees(armRotation);
         model.leftArm.y += armY;
         model.leftArm.z += armZ;
+        syncOuterLayers(model);
     }
 
-    private static void applySmashArm(ModelPart arm, float time) {
-        float armRotation = sampleFour(time, 0.0F, -135.0F, 0.05F, -62.5F, 0.10F, -52.5F, 0.25F, 0.0F);
-        float armY = sampleThree(time, 0.0F, 0.0F, 0.05F, -3.0F, 0.25F, 0.0F);
-        float armZ = sampleThree(time, 0.0F, 0.0F, 0.05F, -5.0F, 0.25F, 0.0F);
-
-        arm.xRot = degrees(armRotation);
-        arm.y += armY;
-        arm.z += armZ;
+    public static void clear() {
+        LAST_ATTACK_PROGRESS.clear();
+        SMASH_START_TICK.clear();
     }
 
     private static void syncOuterLayers(PlayerModel<?> model) {

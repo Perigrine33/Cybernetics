@@ -41,7 +41,7 @@ public final class NavigationMapScreen extends Screen {
     private static final int MAP_RIGHT_PADDING = 8;
     private static final int MAP_BOTTOM_PADDING = 8;
 
-    private static final int CONTEXT_MENU_WIDTH = 76;
+    private static final int CONTEXT_MENU_WIDTH = 112;
     private static final int CONTEXT_MENU_HEIGHT = 20;
     private static final int CONTEXT_MENU_BACKGROUND = 0xEE050505;
     private static final int CONTEXT_MENU_BORDER = 0xFF00E5FF;
@@ -80,6 +80,10 @@ public final class NavigationMapScreen extends Screen {
 
     private int contextMenuX;
     private int contextMenuY;
+    private boolean contextMenuOpen;
+    private int contextWorldX;
+    private int contextWorldZ;
+    private int textureUploadsRemaining;
 
     public NavigationMapScreen(Screen parent) {
         super(Component.translatable("screen.createcybernetics.navigation_map"));
@@ -123,6 +127,7 @@ public final class NavigationMapScreen extends Screen {
         LocalPlayer player = Minecraft.getInstance().player;
 
         gg.fill(0, 0, width, height, BACKGROUND_COLOR);
+        textureUploadsRemaining = 4;
         gg.fill(MAP_LEFT, MAP_TOP, mapRight(), mapBottom(), MAP_BACKGROUND_COLOR);
 
         if (player != null) {
@@ -183,7 +188,15 @@ public final class NavigationMapScreen extends Screen {
         int minTileZ = Math.floorDiv(Mth.floor(minWorldZ), tileSize);
         int maxTileZ = Math.floorDiv(Mth.floor(maxWorldZ), tileSize);
 
-        for (int tileZ = minTileZ; tileZ <= maxTileZ; tileZ++) {
+        // At minimum zoom a large display can span hundreds of thousands of empty
+        // tile coordinates. Visit existing tiles instead when that is cheaper.
+        if ((long) (maxTileX - minTileX + 1) * (maxTileZ - minTileZ + 1) > tileIndex.size()) {
+            for (var tile : tileIndex.values()) {
+                if (!dimension.equals(tile.dimension()) || tile.tileX() < minTileX || tile.tileX() > maxTileX
+                        || tile.tileZ() < minTileZ || tile.tileZ() > maxTileZ) continue;
+                renderExploredTile(gg, tile, minWorldX, maxWorldX, minWorldZ, maxWorldZ);
+            }
+        } else for (int tileZ = minTileZ; tileZ <= maxTileZ; tileZ++) {
             for (int tileX = minTileX; tileX <= maxTileX; tileX++) {
                 MinimapWaypointClient.ExploredTile tile = tileIndex.get(new TileKey(dimension, tileX, tileZ));
 
@@ -192,11 +205,28 @@ public final class NavigationMapScreen extends Screen {
                 renderExploredTile(gg, tile, minWorldX, maxWorldX, minWorldZ, maxWorldZ);
             }
         }
+
+        // Panning must not retain GPU textures for every tile ever viewed.
+        tileTextureCaches.entrySet().removeIf(entry -> {
+            var tile = entry.getKey();
+            if (dimension.equals(tile.dimension()) && tile.tileX() >= minTileX - 1 && tile.tileX() <= maxTileX + 1
+                    && tile.tileZ() >= minTileZ - 1 && tile.tileZ() <= maxTileZ + 1) return false;
+            entry.getValue().close();
+            return true;
+        });
     }
 
     private void renderExploredTile(GuiGraphics gg, MinimapWaypointClient.ExploredTile tile, double minWorldX, double maxWorldX, double minWorldZ, double maxWorldZ) {
-        TileTextureCache textureCache = tileTextureCaches.computeIfAbsent(tile, TileTextureCache::new);
-        textureCache.ensureCurrent();
+        TileTextureCache textureCache = tileTextureCaches.get(tile);
+        if (textureCache == null) {
+            if (textureUploadsRemaining == 0) return;
+            textureCache = new TileTextureCache(tile);
+            tileTextureCaches.put(tile, textureCache);
+        }
+        if (textureCache.uploadedRevision != tile.revision() && textureUploadsRemaining > 0) {
+            textureCache.ensureCurrent();
+            textureUploadsRemaining--;
+        }
 
         int screenX0 = worldToScreenX(tile.minWorldX());
         int screenY0 = worldToScreenY(tile.minWorldZ());
@@ -294,7 +324,7 @@ public final class NavigationMapScreen extends Screen {
             }
         }
 
-        if (hoveredWaypoint != null && contextWaypoint == null) {
+        if (hoveredWaypoint != null && !contextMenuOpen) {
             int x = worldToScreenX(hoveredWaypoint.x() + 0.5D);
             int y = worldToScreenY(hoveredWaypoint.z() + 0.5D);
             int distance = Mth.floor(Math.sqrt(square(player.getX() - hoveredWaypoint.x()) + square(player.getZ() - hoveredWaypoint.z())));
@@ -375,7 +405,7 @@ public final class NavigationMapScreen extends Screen {
     }
 
     private void renderContextMenu(GuiGraphics gg, int mouseX, int mouseY) {
-        if (contextWaypoint == null) return;
+        if (!contextMenuOpen) return;
 
         int x0 = contextMenuX;
         int y0 = contextMenuY;
@@ -388,7 +418,8 @@ public final class NavigationMapScreen extends Screen {
         gg.fill(x0, y1 - 1, x1, y1, CONTEXT_MENU_BORDER);
         gg.fill(x0, y0, x0 + 1, y1, CONTEXT_MENU_BORDER);
         gg.fill(x1 - 1, y0, x1, y1, CONTEXT_MENU_BORDER);
-        gg.drawCenteredString(font, Component.translatable("gui.createcybernetics.navigation.delete"), x0 + CONTEXT_MENU_WIDTH / 2, y0 + 6, CONTEXT_MENU_TEXT);
+        String action = contextWaypoint == null ? "add" : SharedNavigationClientState.isSharedWaypoint(contextWaypoint.id()) ? "hide" : "delete";
+        gg.drawCenteredString(font, Component.translatable("gui.createcybernetics.navigation." + action), x0 + CONTEXT_MENU_WIDTH / 2, y0 + 6, CONTEXT_MENU_TEXT);
     }
 
     private void renderFrame(GuiGraphics gg) {
@@ -518,26 +549,53 @@ public final class NavigationMapScreen extends Screen {
         return mouseX >= contextMenuX && mouseX < contextMenuX + CONTEXT_MENU_WIDTH && mouseY >= contextMenuY && mouseY < contextMenuY + CONTEXT_MENU_HEIGHT;
     }
 
-    private void openContextMenu(MinimapWaypointClient.Waypoint waypoint, double mouseX, double mouseY) {
+    private void openContextMenu(@Nullable MinimapWaypointClient.Waypoint waypoint, double mouseX, double mouseY) {
+        contextMenuOpen = true;
         contextWaypoint = waypoint;
+        contextWorldX = Mth.floor(screenToWorldX(mouseX));
+        contextWorldZ = Mth.floor(screenToWorldZ(mouseY));
         contextMenuX = Mth.clamp(Mth.floor(mouseX), 0, Math.max(0, width - CONTEXT_MENU_WIDTH));
         contextMenuY = Mth.clamp(Mth.floor(mouseY), 0, Math.max(0, height - CONTEXT_MENU_HEIGHT));
         dragging = false;
     }
 
     private void closeContextMenu() {
+        contextMenuOpen = false;
         contextWaypoint = null;
+    }
+
+    private boolean isInsideMap(double mouseX, double mouseY) {
+        return mouseX >= MAP_LEFT && mouseX < mapRight() && mouseY >= MAP_TOP && mouseY < mapBottom();
+    }
+
+    private @Nullable MinimapWaypointClient.Waypoint waypointAt(LocalPlayer player, double mouseX, double mouseY) {
+        if (player == null || !isInsideMap(mouseX, mouseY)) return null;
+        MinimapWaypointClient.Waypoint closest = null;
+        double distance = 64.0D;
+        String dimension = player.level().dimension().location().toString();
+        for (var waypoint : waypointsByDimension.getOrDefault(dimension, List.of())) {
+            int x = worldToScreenX(waypoint.x() + 0.5D);
+            int y = worldToScreenY(waypoint.z() + 0.5D);
+            if (!isInsideMap(x, y)) continue;
+            double candidate = square(mouseX - x) + square(mouseY - y);
+            if (candidate <= distance) { closest = waypoint; distance = candidate; }
+        }
+        return closest;
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         LocalPlayer player = Minecraft.getInstance().player;
 
-        if (contextWaypoint != null) {
+        if (contextMenuOpen) {
             if (button == 0 && contextMenuContains(mouseX, mouseY)) {
                 if (player != null) {
-                    MinimapWaypointClient.removeWaypoint(player, contextWaypoint);
-                    rebuildDataIndexes(player);
+                    if (contextWaypoint == null) {
+                        Minecraft.getInstance().setScreen(new NavigationWaypointScreen(this, contextWorldX, contextWorldZ));
+                    } else {
+                        MinimapWaypointClient.removeWaypoint(player, contextWaypoint);
+                        rebuildDataIndexes(player);
+                    }
                 }
 
                 closeContextMenu();
@@ -547,7 +605,8 @@ public final class NavigationMapScreen extends Screen {
             closeContextMenu();
         }
 
-        if (button == 1 && hoveredWaypoint != null) {
+        hoveredWaypoint = waypointAt(player, mouseX, mouseY);
+        if (button == 1 && isInsideMap(mouseX, mouseY)) {
             openContextMenu(hoveredWaypoint, mouseX, mouseY);
             return true;
         }
@@ -566,7 +625,7 @@ public final class NavigationMapScreen extends Screen {
             return true;
         }
 
-        if (button == 0 && mouseY >= MAP_TOP && mouseY < mapBottom()) {
+        if (button == 0 && isInsideMap(mouseX, mouseY)) {
             dragging = true;
             lastMouseX = mouseX;
             lastMouseY = mouseY;
@@ -671,7 +730,6 @@ public final class NavigationMapScreen extends Screen {
             this.location = ResourceLocation.fromNamespaceAndPath(CreateCybernetics.MODID, "navigation/tile_" + nextTextureId++);
             Minecraft.getInstance().getTextureManager().register(location, texture);
             texture.setFilter(false, false);
-            ensureCurrent();
         }
 
         private ResourceLocation location() {

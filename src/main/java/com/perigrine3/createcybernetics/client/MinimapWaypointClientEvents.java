@@ -20,6 +20,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.RenderFrameEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 
@@ -29,9 +30,11 @@ public final class MinimapWaypointClientEvents {
     private MinimapWaypointClientEvents() {}
 
     private static final int EXPLORATION_RADIUS = 32;
-    private static final int EXPLORATION_UPDATE_INTERVAL = 10;
     private static final int EXPLORATION_REFRESH_INTERVAL = 200;
     private static final int SAVE_INTERVAL = 100;
+    private static LocalPlayer navigationPlayer;
+    private static int lastRefreshTick = Integer.MIN_VALUE;
+    private static int lastSaveTick = Integer.MIN_VALUE;
 
     @SubscribeEvent
     public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
@@ -81,23 +84,42 @@ public final class MinimapWaypointClientEvents {
     }
 
     @SubscribeEvent
+    public static void onRenderFrame(RenderFrameEvent.Pre event) {
+        MinimapWaypointClient.beginNavigationFrame();
+    }
+
+    @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
 
         if (player == null) return;
         if (!CyberpunkMinimapRenderer.hasNavigationChip(player)) return;
-
-        if (player.tickCount % EXPLORATION_UPDATE_INTERVAL == 0) {
-            MinimapWaypointClient.updateExploration(player, EXPLORATION_RADIUS);
+        // Minecraft may run several client ticks before displaying the next frame.
+        // Navigation gets one job, not a fresh allowance for every catch-up tick.
+        if (!MinimapWaypointClient.claimNavigationWork()) return;
+        if (navigationPlayer != player) {
+            navigationPlayer = player;
+            lastRefreshTick = Integer.MIN_VALUE;
+            lastSaveTick = Integer.MIN_VALUE;
         }
 
-        if (player.tickCount % EXPLORATION_REFRESH_INTERVAL == 0) {
+        // Persist nearby exploration first; the minimap can reuse those samples.
+        MinimapWaypointClient.updateExploration(player, EXPLORATION_RADIUS);
+
+        if (!mc.options.hideGui && mc.screen == null && mc.options.getCameraType().isFirstPerson()
+                && HudConfigClient.get(player.getUUID()).minimap.enabled) {
+            CyberpunkMinimapRenderer.updateTerrain(player);
+        }
+
+        if (lastRefreshTick == Integer.MIN_VALUE || player.tickCount - lastRefreshTick >= EXPLORATION_REFRESH_INTERVAL) {
             MinimapWaypointClient.refreshExploration(player, 12);
+            lastRefreshTick = player.tickCount;
         }
 
-        if (player.tickCount % SAVE_INTERVAL == 0) {
+        if (lastSaveTick == Integer.MIN_VALUE || player.tickCount - lastSaveTick >= SAVE_INTERVAL) {
             MinimapWaypointClient.saveIfDirty(player.getUUID());
+            lastSaveTick = player.tickCount;
         }
     }
 
@@ -112,6 +134,9 @@ public final class MinimapWaypointClientEvents {
 
     @SubscribeEvent
     public static void onClientLogout(ClientPlayerNetworkEvent.LoggingOut event) {
+        navigationPlayer = null;
+        CyberpunkMinimapRenderer.clearTerrainCache();
+        MinimapWaypointClient.clearTerrainCache();
         LocalPlayer player = Minecraft.getInstance().player;
 
         if (player != null) {

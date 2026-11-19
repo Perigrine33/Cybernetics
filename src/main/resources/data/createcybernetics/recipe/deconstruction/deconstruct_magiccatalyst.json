@@ -3,9 +3,6 @@
   "inputs": [
     {
       "item": "createcybernetics:organsupgrades_magiccatalyst"
-    },
-    {
-      "item": "createcybernetics:scavenged_magiccatalyst"
     }
   ],
   "outputs": [

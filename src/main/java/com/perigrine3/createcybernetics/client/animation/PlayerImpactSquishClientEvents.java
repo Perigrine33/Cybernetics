@@ -14,8 +14,11 @@ import net.minecraft.world.item.MaceItem;
 import net.minecraft.world.phys.AABB;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.RenderPlayerEvent;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 
 @EventBusSubscriber(modid = CreateCybernetics.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
 public final class PlayerImpactSquishClientEvents {
@@ -25,8 +28,29 @@ public final class PlayerImpactSquishClientEvents {
     private static boolean wasOnGround = true;
     private static float maxFallDistance = 0.0F;
     private static int lastHurtTime = 0;
+    private static LocalPlayer trackedPlayer;
 
     private PlayerImpactSquishClientEvents() {}
+
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onRenderPlayerPost(RenderPlayerEvent.Post event) {
+        PlayerAnimationPoseState.restore(event.getRenderer().getModel());
+    }
+
+    @SubscribeEvent
+    public static void onLogout(ClientPlayerNetworkEvent.LoggingOut event) {
+        resetAnimationState();
+        trackedPlayer = null;
+    }
+
+    private static void resetAnimationState() {
+        PlayerAnimationPoseState.clear();
+        HeavyKnucklesClientAnimation.clear();
+        PlayerImpactSquishClientState.clear();
+        maxFallDistance = 0.0F;
+        wasOnGround = true;
+        lastHurtTime = 0;
+    }
 
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
@@ -34,6 +58,10 @@ public final class PlayerImpactSquishClientEvents {
 
         Minecraft minecraft = Minecraft.getInstance();
         LocalPlayer player = minecraft.player;
+        if (player != trackedPlayer) {
+            resetAnimationState();
+            trackedPlayer = player;
+        }
         if (player == null) return;
 
         if (!hasGooeyMuscle(player)) {

@@ -1,3 +1,4 @@
+
 package com.perigrine3.createcybernetics;
 
 import com.mojang.logging.LogUtils;
@@ -63,6 +64,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.FlowerPotBlock;
@@ -153,104 +155,27 @@ public class CreateCybernetics {
 
     private void addCreative(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == CreativeModeTabs.NATURAL_BLOCKS) {
-            event.insertAfter(
-                    Items.PITCHER_POD.getDefaultInstance(),
-                    ModItems.DATURA_SEED_POD.get().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
-
-            event.insertAfter(
-                    Blocks.DEEPSLATE_IRON_ORE.asItem().getDefaultInstance(),
-                    ModBlocks.TITANIUMORE_BLOCK.get().asItem().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
-
-            event.insertAfter(
-                    ModBlocks.TITANIUMORE_BLOCK.asItem().getDefaultInstance(),
-                    ModBlocks.DEEPSLATE_TITANIUMORE_BLOCK.get().asItem().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
-
-            event.insertAfter(
-                    Blocks.RAW_IRON_BLOCK.asItem().getDefaultInstance(),
-                    ModBlocks.RAW_TITANIUM_BLOCK.get().asItem().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
+            insertCreativeAfter(event, Items.PITCHER_POD.getDefaultInstance(), ModItems.DATURA_SEED_POD.get().getDefaultInstance());
+            insertCreativeAfter(event, Blocks.DEEPSLATE_IRON_ORE.asItem().getDefaultInstance(), ModBlocks.TITANIUMORE_BLOCK.get().asItem().getDefaultInstance());
+            insertCreativeAfter(event, ModBlocks.TITANIUMORE_BLOCK.asItem().getDefaultInstance(), ModBlocks.DEEPSLATE_TITANIUMORE_BLOCK.get().asItem().getDefaultInstance());
+            insertCreativeAfter(event, Blocks.RAW_IRON_BLOCK.asItem().getDefaultInstance(), ModBlocks.RAW_TITANIUM_BLOCK.get().asItem().getDefaultInstance());
         }
 
         if (event.getTabKey() == CreativeModeTabs.BUILDING_BLOCKS) {
-            event.insertAfter(
-                    Items.CHAIN.getDefaultInstance(),
-                    ModBlocks.TITANIUM_BLOCK.get().asItem().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
-
-            event.insertAfter(
-                    ModBlocks.TITANIUM_BLOCK.asItem().getDefaultInstance(),
-                    ModBlocks.SMOOTH_TITANIUM.get().asItem().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
-
-            event.insertAfter(
-                    ModBlocks.SMOOTH_TITANIUM.asItem().getDefaultInstance(),
-                    ModBlocks.TITANIUM_GRATE.get().asItem().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
-
-            event.insertAfter(
-                    ModBlocks.TITANIUM_GRATE.asItem().getDefaultInstance(),
-                    ModBlocks.TITANIUM_CLAD_COPPER.get().asItem().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
-
-            event.insertAfter(
-                    ModBlocks.TITANIUM_CLAD_COPPER.asItem().getDefaultInstance(),
-                    ModBlocks.ETCHED_TITANIUM_COPPER.get().asItem().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
-
-            event.insertAfter(
-                    ModBlocks.SMOOTH_TITANIUM.asItem().getDefaultInstance(),
-                    ModBlocks.SMOOTH_TITANIUM_STAIRS.get().asItem().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
-
-            event.insertAfter(
-                    ModBlocks.SMOOTH_TITANIUM_STAIRS.asItem().getDefaultInstance(),
-                    ModBlocks.SMOOTH_TITANIUM_SLAB.get().asItem().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
-
-            event.insertAfter(
-                    ModBlocks.TITANIUM_CLAD_COPPER.asItem().getDefaultInstance(),
-                    ModBlocks.TITANIUM_CLAD_COPPER_STAIRS.get().asItem().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
-
-            event.insertAfter(
-                    ModBlocks.TITANIUM_CLAD_COPPER_STAIRS.asItem().getDefaultInstance(),
-                    ModBlocks.TITANIUM_CLAD_COPPER_SLAB.get().asItem().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
-
-            event.insertAfter(
-                    ModBlocks.ETCHED_TITANIUM_COPPER.asItem().getDefaultInstance(),
-                    ModBlocks.ETCHED_TITANIUM_COPPER_STAIRS.get().asItem().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
-
-            event.insertAfter(
-                    ModBlocks.ETCHED_TITANIUM_COPPER_STAIRS.asItem().getDefaultInstance(),
-                    ModBlocks.ETCHED_TITANIUM_COPPER_SLAB.get().asItem().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
+            insertCreativeAfter(event, Items.CHAIN.getDefaultInstance(), ModBlocks.TITANIUM_BLOCK.get().asItem().getDefaultInstance());
+            insertCreativeAfter(event, ModBlocks.TITANIUM_BLOCK.asItem().getDefaultInstance(), ModBlocks.SMOOTH_TITANIUM.get().asItem().getDefaultInstance());
+            insertCreativeAfter(event, ModBlocks.SMOOTH_TITANIUM.asItem().getDefaultInstance(), ModBlocks.TITANIUM_GRATE.get().asItem().getDefaultInstance());
+            insertCreativeAfter(event, ModBlocks.TITANIUM_GRATE.asItem().getDefaultInstance(), ModBlocks.TITANIUM_CLAD_COPPER.get().asItem().getDefaultInstance());
+            insertCreativeAfter(event, ModBlocks.TITANIUM_CLAD_COPPER.asItem().getDefaultInstance(), ModBlocks.ETCHED_TITANIUM_COPPER.get().asItem().getDefaultInstance());
+            insertCreativeAfter(event, ModBlocks.SMOOTH_TITANIUM.asItem().getDefaultInstance(), ModBlocks.SMOOTH_TITANIUM_STAIRS.get().asItem().getDefaultInstance());
+            insertCreativeAfter(event, ModBlocks.SMOOTH_TITANIUM_STAIRS.asItem().getDefaultInstance(), ModBlocks.SMOOTH_TITANIUM_SLAB.get().asItem().getDefaultInstance());
+            insertCreativeAfter(event, ModBlocks.TITANIUM_CLAD_COPPER.asItem().getDefaultInstance(), ModBlocks.TITANIUM_CLAD_COPPER_STAIRS.get().asItem().getDefaultInstance());
+            insertCreativeAfter(event, ModBlocks.TITANIUM_CLAD_COPPER_STAIRS.asItem().getDefaultInstance(), ModBlocks.TITANIUM_CLAD_COPPER_SLAB.get().asItem().getDefaultInstance());
+            insertCreativeAfter(event, ModBlocks.ETCHED_TITANIUM_COPPER.asItem().getDefaultInstance(), ModBlocks.ETCHED_TITANIUM_COPPER_STAIRS.get().asItem().getDefaultInstance());
+            insertCreativeAfter(event, ModBlocks.ETCHED_TITANIUM_COPPER_STAIRS.asItem().getDefaultInstance(), ModBlocks.ETCHED_TITANIUM_COPPER_SLAB.get().asItem().getDefaultInstance());
 
             if (IronsSpellbooksCompatBlocks.isLoaded()) {
-                event.insertAfter(
-                        ModBlocks.ETCHED_TITANIUM_COPPER_SLAB.get().asItem().getDefaultInstance(),
-                        IronsSpellbooksCompatBlocks.ANOMALY_CORE_ITEM.get().getDefaultInstance(),
-                        CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-                );
+                insertCreativeAfter(event, ModBlocks.ETCHED_TITANIUM_COPPER_SLAB.get().asItem().getDefaultInstance(), IronsSpellbooksCompatBlocks.ANOMALY_CORE_ITEM.get().getDefaultInstance());
             }
         }
 
@@ -267,165 +192,69 @@ public class CreateCybernetics {
         }
 
         if (event.getTabKey() == CreativeModeTabs.INGREDIENTS) {
-            event.insertAfter(
-                    Items.PHANTOM_MEMBRANE.getDefaultInstance(),
-                    ModItems.DATURA_FLOWER.get().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
+            insertCreativeAfter(event, Items.PHANTOM_MEMBRANE.getDefaultInstance(), ModItems.DATURA_FLOWER.get().getDefaultInstance());
         }
 
+
+
         if (event.getTabKey() == CreativeModeTabs.FOOD_AND_DRINKS) {
-            event.insertAfter(
-                    Items.COOKED_RABBIT.getDefaultInstance(),
-                    ModItems.BODYPART_BRAIN.get().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
-
-            event.insertAfter(
-                    ModItems.BODYPART_BRAIN.get().getDefaultInstance(),
-                    ModItems.COOKED_BRAIN.get().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
-
-            event.insertAfter(
-                    ModItems.COOKED_BRAIN.get().getDefaultInstance(),
-                    ModItems.BODYPART_HEART.get().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
-
-            event.insertAfter(
-                    ModItems.BODYPART_HEART.get().getDefaultInstance(),
-                    ModItems.COOKED_HEART.get().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
-
-            event.insertAfter(
-                    ModItems.COOKED_HEART.get().getDefaultInstance(),
-                    ModItems.BODYPART_LIVER.get().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
-
-            event.insertAfter(
-                    ModItems.BODYPART_LIVER.get().getDefaultInstance(),
-                    ModItems.COOKED_LIVER.get().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
-
-            event.insertAfter(
-                    ModItems.COOKED_LIVER.get().getDefaultInstance(),
-                    ModItems.BONE_MARROW.get().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
+            insertCreativeAfter(event, Items.COOKED_RABBIT.getDefaultInstance(), ModItems.BODYPART_BRAIN.get().getDefaultInstance());
+            insertCreativeAfter(event, ModItems.BODYPART_BRAIN.get().getDefaultInstance(), ModItems.COOKED_BRAIN.get().getDefaultInstance());
+            insertCreativeAfter(event, ModItems.COOKED_BRAIN.get().getDefaultInstance(), ModItems.BODYPART_HEART.get().getDefaultInstance());
+            insertCreativeAfter(event, ModItems.BODYPART_HEART.get().getDefaultInstance(), ModItems.COOKED_HEART.get().getDefaultInstance());
+            insertCreativeAfter(event, ModItems.COOKED_HEART.get().getDefaultInstance(), ModItems.BODYPART_LIVER.get().getDefaultInstance());
+            insertCreativeAfter(event, ModItems.BODYPART_LIVER.get().getDefaultInstance(), ModItems.COOKED_LIVER.get().getDefaultInstance());
+            insertCreativeAfter(event, ModItems.COOKED_LIVER.get().getDefaultInstance(), ModItems.BONE_MARROW.get().getDefaultInstance());
 
             if (ModItems.ANDOUILLE_SAUSAGE != null
                     && ModItems.ROASTED_ANDOUILLE != null
                     && ModItems.GROUND_OFFAL != null
                     && ModItems.BRAIN_STEW != null) {
-                event.insertAfter(
-                        ModItems.BONE_MARROW.get().getDefaultInstance(),
-                        ModItems.ANDOUILLE_SAUSAGE.get().getDefaultInstance(),
-                        CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-                );
-
-                event.insertAfter(
-                        ModItems.ANDOUILLE_SAUSAGE.get().getDefaultInstance(),
-                        ModItems.ROASTED_ANDOUILLE.get().getDefaultInstance(),
-                        CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-                );
-
-                event.insertAfter(
-                        ModItems.ROASTED_ANDOUILLE.get().getDefaultInstance(),
-                        ModItems.GROUND_OFFAL.get().getDefaultInstance(),
-                        CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-                );
-
-                event.insertAfter(
-                        ModItems.GROUND_OFFAL.get().getDefaultInstance(),
-                        ModItems.BRAIN_STEW.get().getDefaultInstance(),
-                        CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-                );
+                insertCreativeAfter(event, ModItems.BONE_MARROW.get().getDefaultInstance(), ModItems.ANDOUILLE_SAUSAGE.get().getDefaultInstance());
+                insertCreativeAfter(event, ModItems.ANDOUILLE_SAUSAGE.get().getDefaultInstance(), ModItems.ROASTED_ANDOUILLE.get().getDefaultInstance());
+                insertCreativeAfter(event, ModItems.ROASTED_ANDOUILLE.get().getDefaultInstance(), ModItems.GROUND_OFFAL.get().getDefaultInstance());
+                insertCreativeAfter(event, ModItems.GROUND_OFFAL.get().getDefaultInstance(), ModItems.BRAIN_STEW.get().getDefaultInstance());
             }
         }
 
         if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
 
-            event.insertAfter(
-                    Items.MUSIC_DISC_PIGSTEP.getDefaultInstance(),
-                    ModItems.MUSIC_DISC_CYBERPSYCHO.get().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
+            insertCreativeAfter(event, Items.MUSIC_DISC_PIGSTEP.getDefaultInstance(), ModItems.MUSIC_DISC_CYBERPSYCHO.get().getDefaultInstance());
+            insertCreativeAfter(event, ModItems.MUSIC_DISC_CYBERPSYCHO.get().getDefaultInstance(), ModItems.MUSIC_DISC_NEON_OVERLORDS.get().getDefaultInstance());
+            insertCreativeAfter(event, ModItems.MUSIC_DISC_NEON_OVERLORDS.get().getDefaultInstance(), ModItems.MUSIC_DISC_NEUROHACK.get().getDefaultInstance());
+            insertCreativeAfter(event, ModItems.MUSIC_DISC_NEUROHACK.get().getDefaultInstance(), ModItems.MUSIC_DISC_THE_GRID.get().getDefaultInstance());
+            insertCreativeAfter(event, ModItems.MUSIC_DISC_THE_GRID.get().getDefaultInstance(), ModItems.MUSIC_DISC_DANGER_SNOW.get().getDefaultInstance());
+            insertCreativeAfter(event, ModItems.MUSIC_DISC_DANGER_SNOW.get().getDefaultInstance(), ModItems.MUSIC_DISC_DARK.get().getDefaultInstance());
+            insertCreativeAfter(event, ModItems.MUSIC_DISC_DARK.get().getDefaultInstance(), ModItems.MUSIC_DISC_MY_RETRO_JACKET.get().getDefaultInstance());
+            insertCreativeAfter(event, ModItems.MUSIC_DISC_MY_RETRO_JACKET.get().getDefaultInstance(), ModItems.MUSIC_DISC_GAMEBOY_GIRL.get().getDefaultInstance());
+            insertCreativeAfter(event, ModItems.MUSIC_DISC_GAMEBOY_GIRL.get().getDefaultInstance(), ModItems.MUSIC_DISC_NIGHTMARES_ON_HAUPTSTRASSE.get().getDefaultInstance());
+            insertCreativeAfter(event, ModItems.MUSIC_DISC_NIGHTMARES_ON_HAUPTSTRASSE.get().getDefaultInstance(), ModItems.MUSIC_DISC_INTERGALACTIC_WALK.get().getDefaultInstance());
+            insertCreativeAfter(event, ModItems.MUSIC_DISC_INTERGALACTIC_WALK.get().getDefaultInstance(), ModItems.MUSIC_DISC_SENSATION.get().getDefaultInstance());
+            insertCreativeAfter(event, ModItems.MUSIC_DISC_SENSATION.get().getDefaultInstance(), ModItems.MUSIC_DISC_SHOTGUN.get().getDefaultInstance());
+            insertCreativeAfter(event, ModItems.MUSIC_DISC_SHOTGUN.get().getDefaultInstance(), ModItems.MUSIC_DISC_DESCENT_INTO_MADNESS.get().getDefaultInstance());
+        }
+    }
 
-            event.insertAfter(
-                    ModItems.MUSIC_DISC_CYBERPSYCHO.get().getDefaultInstance(),
-                    ModItems.MUSIC_DISC_NEON_OVERLORDS.get().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
 
-            event.insertAfter(
-                    ModItems.MUSIC_DISC_NEON_OVERLORDS.get().getDefaultInstance(),
-                    ModItems.MUSIC_DISC_NEUROHACK.get().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
 
-            event.insertAfter(
-                    ModItems.MUSIC_DISC_NEUROHACK.get().getDefaultInstance(),
-                    ModItems.MUSIC_DISC_THE_GRID.get().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
+    private static void insertCreativeAfter(BuildCreativeModeTabContentsEvent event, ItemStack anchor, ItemStack entry) {
+        boolean parentHasEntry = event.getParentEntries().contains(entry);
+        boolean searchHasEntry = event.getSearchEntries().contains(entry);
 
-            event.insertAfter(
-                    ModItems.MUSIC_DISC_THE_GRID.get().getDefaultInstance(),
-                    ModItems.MUSIC_DISC_DANGER_SNOW.get().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
+        if (!parentHasEntry) {
+            if (event.getParentEntries().contains(anchor)) {
+                event.insertAfter(anchor, entry, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+            } else {
+                event.accept(entry, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+            }
+        }
 
-            event.insertAfter(
-                    ModItems.MUSIC_DISC_DANGER_SNOW.get().getDefaultInstance(),
-                    ModItems.MUSIC_DISC_DARK.get().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
-
-            event.insertAfter(
-                    ModItems.MUSIC_DISC_DARK.get().getDefaultInstance(),
-                    ModItems.MUSIC_DISC_MY_RETRO_JACKET.get().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
-
-            event.insertAfter(
-                    ModItems.MUSIC_DISC_MY_RETRO_JACKET.get().getDefaultInstance(),
-                    ModItems.MUSIC_DISC_GAMEBOY_GIRL.get().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
-
-            event.insertAfter(
-                    ModItems.MUSIC_DISC_GAMEBOY_GIRL.get().getDefaultInstance(),
-                    ModItems.MUSIC_DISC_NIGHTMARES_ON_HAUPTSTRASSE.get().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
-
-            event.insertAfter(
-                    ModItems.MUSIC_DISC_NIGHTMARES_ON_HAUPTSTRASSE.get().getDefaultInstance(),
-                    ModItems.MUSIC_DISC_INTERGALACTIC_WALK.get().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
-
-            event.insertAfter(
-                    ModItems.MUSIC_DISC_INTERGALACTIC_WALK.get().getDefaultInstance(),
-                    ModItems.MUSIC_DISC_SENSATION.get().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
-
-            event.insertAfter(
-                    ModItems.MUSIC_DISC_SENSATION.get().getDefaultInstance(),
-                    ModItems.MUSIC_DISC_SHOTGUN.get().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
-
-            event.insertAfter(
-                    ModItems.MUSIC_DISC_SHOTGUN.get().getDefaultInstance(),
-                    ModItems.MUSIC_DISC_DESCENT_INTO_MADNESS.get().getDefaultInstance(),
-                    CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS
-            );
+        if (!searchHasEntry) {
+            if (event.getSearchEntries().contains(anchor)) {
+                event.insertAfter(anchor, entry, CreativeModeTab.TabVisibility.SEARCH_TAB_ONLY);
+            } else {
+                event.accept(entry, CreativeModeTab.TabVisibility.SEARCH_TAB_ONLY);
+            }
         }
     }
 

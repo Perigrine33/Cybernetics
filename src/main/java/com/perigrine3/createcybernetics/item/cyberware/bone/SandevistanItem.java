@@ -7,6 +7,7 @@ import com.perigrine3.createcybernetics.common.capabilities.PlayerCyberwareData;
 import com.perigrine3.createcybernetics.common.damage.ModDamageSources;
 import com.perigrine3.createcybernetics.effect.ModEffects;
 import com.perigrine3.createcybernetics.sound.ModSounds;
+import com.perigrine3.createcybernetics.util.CyberwareAttributeHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.nbt.CompoundTag;
@@ -72,6 +73,15 @@ public class SandevistanItem extends Item implements ICyberwareItem {
     @Override
     public Set<CyberwareSlot> getReplacedOrgans() {
         return Set.of();
+    }
+
+    public boolean isDyeable(ItemStack stack, CyberwareSlot slot) {
+        return slot == CyberwareSlot.BONE;
+    }
+
+    @Override
+    public boolean isDyeable(ItemStack stack) {
+        return true;
     }
 
     @Override
@@ -183,8 +193,15 @@ public class SandevistanItem extends Item implements ICyberwareItem {
         player.addEffect(new MobEffectInstance(ModEffects.SANDEVISTAN_EFFECT, Math.max(1, remainingTicks), 0, false, false, false));
     }
 
+
     private void removeAll(Player player) {
+        if (player.level().isClientSide()) return;
+
         player.removeEffect(ModEffects.SANDEVISTAN_EFFECT);
+
+        CyberwareAttributeHelper.removeModifier(player, "sandevistan_speed");
+        CyberwareAttributeHelper.removeModifier(player, "sandevistan_stepheight");
+        CyberwareAttributeHelper.removeModifier(player, "sandevistan_jump");
     }
 
     private void forceStopAndStartCooldown(Player player) {

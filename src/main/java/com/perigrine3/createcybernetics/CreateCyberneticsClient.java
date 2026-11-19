@@ -29,7 +29,7 @@ public class CreateCyberneticsClient {
 
 
         // Some client setup code
-        CreateCybernetics.LOGGER.info("INITIALIING CYBERDATA IN CLIENT SETUP");
+        CreateCybernetics.LOGGER.info("INITIALIZING CYBERDATA IN CLIENT SETUP");
         CreateCybernetics.LOGGER.info("MINECRAFT NAME >> {}", Minecraft.getInstance().getUser().getName());
     }
 }

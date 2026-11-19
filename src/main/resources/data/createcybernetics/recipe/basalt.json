@@ -6,8 +6,8 @@
         "type": "neoforge:mod_loaded",
         "modid": "northstar"
       }
-    },
- {
+    }
+  ],
   "type": "create:crushing",
   "ingredients": [
     {

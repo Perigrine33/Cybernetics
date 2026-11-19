@@ -88,7 +88,12 @@ public class ModItems {
     public static final DeferredItem<Item> GRAPHENE_ELASTOMER = ITEMS.register("graphene_elastomer",
             () -> new Item(new Item.Properties()));
     public static final DeferredItem<Item> HOLOIMPRINT_CHIP = ITEMS.register("holoimprint_chip",
-            () -> new HoloProjectionChipItem(new Item.Properties()));
+            () -> new HoloProjectionChipItem(new Item.Properties()){
+                @Override
+                public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltipComponents, TooltipFlag tooltipFlag) {
+                    tooltipComponents.add(Component.translatable("tooltip.createcybernetics.imprintchip_tooltip").withStyle(ChatFormatting.GRAY));
+                    super.appendHoverText(stack, context, tooltipComponents, tooltipFlag);
+                }});
     public static final DeferredItem<Item> XP_CAPSULE = ITEMS.register("expcapsule",
             () -> new XPCapsuleItem(new Item.Properties().stacksTo(1)));
     public static final DeferredItem<Item> FACEPLATE = ITEMS.register("faceplate",
@@ -2499,7 +2504,6 @@ public class ModItems {
                     tooltipComponents.add(Component.translatable("tooltip.createcybernetics.brainupgrades_cyberdeck.tooltip1"));
                     tooltipComponents.add(Component.translatable("tooltip.createcybernetics.brainupgrades_cyberdeck.tooltip2"));
                     tooltipComponents.add(Component.translatable("tooltip.createcybernetics.brainupgrades_cyberdeck.ram"));
-                    tooltipComponents.add(Component.translatable("tooltip.createcybernetics.brainupgrades_cyberdeck.ramregen"));
 
                     Component invKey = ModKeyMappings.CYBERDECK.get().getTranslatedKeyMessage();
                     Component wheelKey = ModKeyMappings.CYBERDECK_WHEEL.get().getTranslatedKeyMessage();

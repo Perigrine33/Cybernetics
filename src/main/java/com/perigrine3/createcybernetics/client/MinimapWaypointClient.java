@@ -7,6 +7,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.perigrine3.createcybernetics.CreateCybernetics;
 import com.perigrine3.createcybernetics.client.navigation.SharedNavigationClientState;
+import com.perigrine3.createcybernetics.client.navigation.NavigationFrameBudget;
+import com.perigrine3.createcybernetics.client.navigation.NavigationExplorationScan;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.player.LocalPlayer;
@@ -54,7 +56,8 @@ public final class MinimapWaypointClient {
     public enum WaypointType {
         BANNER,
         MAP_BANNER,
-        EXPLORER
+        EXPLORER,
+        CUSTOM
     }
 
     public record Waypoint(String id, String dimension, int x, int y, int z, String name, int color, WaypointType type, boolean autoClear) {}
@@ -175,12 +178,46 @@ public final class MinimapWaypointClient {
         private final Map<String, ExploredTile> exploredTiles = new HashMap<>();
         private final Set<String> dirtyTileKeys = new LinkedHashSet<>();
         private final Set<String> dirtyWaypointIds = new LinkedHashSet<>();
+        private final Set<String> hiddenWaypointIds = new LinkedHashSet<>();
         private String activeWaypointId;
         private boolean dirty;
+        private String explorationDimension;
+        private int explorationX;
+        private int explorationZ;
+        private int explorationCursor;
+        private int explorationRadius;
+        private NavigationExplorationScan explorationScan;
+        private int explorationFinishedTick = Integer.MIN_VALUE;
     }
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Map<NavigationStorageKey, NavigationData> CACHE = new ConcurrentHashMap<>();
+
+    private static final java.util.concurrent.ExecutorService SAVE_WORKER = java.util.concurrent.Executors.newSingleThreadExecutor(task -> {
+        Thread thread = new Thread(task, "Navigation map saves");
+        thread.setDaemon(true);
+        return thread;
+    });
+    private static final Map<NavigationStorageKey, java.util.concurrent.CompletableFuture<Boolean>> SAVES = new HashMap<>();
+
+    private static NavigationData snapshot(NavigationData source) {
+        NavigationData copy = new NavigationData();
+        copy.waypoints.putAll(source.waypoints);
+        copy.maps.addAll(source.maps);
+        copy.hiddenWaypointIds.addAll(source.hiddenWaypointIds);
+        copy.activeWaypointId = source.activeWaypointId;
+        for (var entry : source.exploredTiles.entrySet()) {
+            ExploredTile tile = entry.getValue();
+            copy.exploredTiles.put(entry.getKey(), new ExploredTile(tile.dimension, tile.tileX, tile.tileZ,
+                    tile.colors.clone(), (BitSet) tile.explored.clone()));
+        }
+        return copy;
+    }
+
+    private static void finishSave(NavigationStorageKey key, NavigationData data) {
+        var pending = SAVES.remove(key);
+        if (pending != null && !pending.join()) data.dirty = true;
+    }
 
     private static String cachedWorldId;
 
@@ -206,6 +243,7 @@ public final class MinimapWaypointClient {
             combined.putIfAbsent(waypoint.id(), waypoint);
         }
 
+        combined.keySet().removeAll(data(player.getUUID()).hiddenWaypointIds);
         return Collections.unmodifiableList(new ArrayList<>(combined.values()));
     }
 
@@ -298,6 +336,14 @@ public final class MinimapWaypointClient {
         return snapshots;
     }
 
+    /** Queue keys rather than cloning the complete explored world on network join. */
+    public static void markAllSharedSyncDirty(LocalPlayer player) {
+        if (player == null) return;
+        NavigationData data = data(player.getUUID());
+        data.dirtyTileKeys.addAll(data.exploredTiles.keySet());
+        data.dirtyWaypointIds.addAll(data.waypoints.keySet());
+    }
+
     public static void markAllSharedSyncClean(LocalPlayer player) {
         if (player == null) return;
 
@@ -322,7 +368,7 @@ public final class MinimapWaypointClient {
             waypoint = SharedNavigationClientState.getWaypoint(data.activeWaypointId);
         }
 
-        if (waypoint != null) {
+        if (waypoint != null && !data.hiddenWaypointIds.contains(waypoint.id())) {
             return waypoint;
         }
 
@@ -391,6 +437,7 @@ public final class MinimapWaypointClient {
         }
 
         data.waypoints.put(id, new Waypoint(id, dimension, pos.getX(), pos.getY(), pos.getZ(), sanitizeName(name), color, WaypointType.BANNER, false));
+        data.hiddenWaypointIds.remove(id);
         data.dirtyWaypointIds.add(id);
         data.dirty = true;
         saveIfDirty(key);
@@ -408,6 +455,7 @@ public final class MinimapWaypointClient {
         }
 
         data.waypoints.put(id, new Waypoint(id, dimension, pos.getX(), pos.getY(), pos.getZ(), sanitizeName(name), color, WaypointType.MAP_BANNER, false));
+        data.hiddenWaypointIds.remove(id);
         data.dirtyWaypointIds.add(id);
         data.dirty = true;
         return true;
@@ -424,6 +472,7 @@ public final class MinimapWaypointClient {
         }
 
         data.waypoints.put(id, new Waypoint(id, dimension, x, 0, z, typeId, color, WaypointType.EXPLORER, false));
+        data.hiddenWaypointIds.remove(id);
         data.dirtyWaypointIds.add(id);
         data.dirty = true;
         return true;
@@ -431,14 +480,20 @@ public final class MinimapWaypointClient {
 
     public static boolean removeWaypoint(LocalPlayer player, Waypoint waypoint) {
         if (player == null || waypoint == null) return false;
-        if (SharedNavigationClientState.isSharedWaypoint(waypoint.id())) return false;
 
         NavigationStorageKey key = currentStorageKey(player.getUUID());
         NavigationData data = data(key);
 
-        if (!removeWaypointInternal(data, waypoint)) {
+        boolean shared = SharedNavigationClientState.isSharedWaypoint(waypoint.id());
+        if (!removeWaypointInternal(data, waypoint) && !shared) {
             return false;
         }
+
+        // Shared markers belong to the network. Hide them on this player's map;
+        // A later sync (including a queued upload's echo) must not resurrect a
+        // marker the player removed locally.
+        data.hiddenWaypointIds.add(waypoint.id());
+        if (waypoint.id().equals(data.activeWaypointId)) data.activeWaypointId = null;
 
         data.dirty = true;
         saveIfDirty(key);
@@ -447,20 +502,19 @@ public final class MinimapWaypointClient {
 
     public static boolean removeWaypointById(LocalPlayer player, String id) {
         if (player == null || id == null) return false;
-        if (SharedNavigationClientState.isSharedWaypoint(id)) return false;
+        Waypoint waypoint = findWaypoint(data(player.getUUID()), id);
+        if (waypoint == null) waypoint = SharedNavigationClientState.getWaypoint(id);
+        return removeWaypoint(player, waypoint);
+    }
 
-        NavigationStorageKey key = currentStorageKey(player.getUUID());
-        NavigationData data = data(key);
-        Waypoint waypoint = findWaypoint(data, id);
-
-        if (waypoint == null) {
-            return false;
-        }
-
-        removeWaypointInternal(data, waypoint);
+    public static void addCustomWaypoint(LocalPlayer player, int x, int z, String name) {
+        NavigationData data = data(player.getUUID());
+        String id = "custom|" + UUID.randomUUID();
+        data.waypoints.put(id, new Waypoint(id, player.level().dimension().location().toString(),
+                x, player.getBlockY(), z, sanitizeName(name), 0xFF00E5FF, WaypointType.CUSTOM, false));
+        data.dirtyWaypointIds.add(id);
         data.dirty = true;
-        saveIfDirty(key);
-        return true;
+        saveIfDirty(player.getUUID());
     }
 
     public static boolean importMap(LocalPlayer player, String mapId, String dimension, int centerX, int centerZ, byte scale, byte[] colors) {
@@ -499,35 +553,49 @@ public final class MinimapWaypointClient {
         String dimension = level.dimension().location().toString();
         int centerX = Mth.floor(player.getX());
         int centerZ = Mth.floor(player.getZ());
-        int radiusSqr = radius * radius;
-        boolean changed = false;
-
-        for (int worldZ = centerZ - radius; worldZ <= centerZ + radius; worldZ++) {
-            int dz = worldZ - centerZ;
-
-            for (int worldX = centerX - radius; worldX <= centerX + radius; worldX++) {
-                int dx = worldX - centerX;
-
-                if (dx * dx + dz * dz > radiusSqr) continue;
-
-                ExploredTile tile = getOrCreateTile(data, dimension, worldX, worldZ);
-                int localX = Math.floorMod(worldX, EXPLORATION_TILE_SIZE);
-                int localZ = Math.floorMod(worldZ, EXPLORATION_TILE_SIZE);
-
-                if (tile.isExplored(localX, localZ)) continue;
-
-                int color = sampleTerrainColor(level, worldX, worldZ);
-
-                if (tile.setColor(localX, localZ, color, false)) {
-                    data.dirtyTileKeys.add(tileKey(dimension, tile.tileX(), tile.tileZ()));
-                    changed = true;
-                }
+        boolean radiusChanged = data.explorationScan == null || data.explorationRadius != radius;
+        if (radiusChanged) data.explorationScan = new NavigationExplorationScan(radius);
+        int total = data.explorationScan.size();
+        boolean reset = !dimension.equals(data.explorationDimension) || radiusChanged
+                || Math.abs((long) centerX - data.explorationX) > radius || Math.abs((long) centerZ - data.explorationZ) > radius;
+        if (reset || data.explorationCursor >= total) {
+            if (!reset && centerX == data.explorationX && centerZ == data.explorationZ
+                    && player.tickCount - data.explorationFinishedTick < 40) return;
+            data.explorationDimension = dimension;
+            data.explorationX = centerX;
+            data.explorationZ = centerZ;
+            data.explorationRadius = radius;
+            data.explorationCursor = 0;
+        }
+        // Bound visits as well as samples: explored columns used to allocate thousands
+        // of tile-key strings every other tick, even while standing still.
+        ExploredTile lastTile = null;
+        int lastTileX = Integer.MIN_VALUE;
+        int lastTileZ = Integer.MIN_VALUE;
+        for (int count = 0; count < 64 && data.explorationCursor < total; count++) {
+            int cursor = data.explorationCursor++;
+            int dx = data.explorationScan.x(cursor);
+            int dz = data.explorationScan.z(cursor);
+            int worldX = data.explorationX + dx;
+            int worldZ = data.explorationZ + dz;
+            int tileX = Math.floorDiv(worldX, EXPLORATION_TILE_SIZE);
+            int tileZ = Math.floorDiv(worldZ, EXPLORATION_TILE_SIZE);
+            if (lastTile == null || lastTileX != tileX || lastTileZ != tileZ) {
+                lastTile = getOrCreateTile(data, dimension, worldX, worldZ);
+                lastTileX = tileX;
+                lastTileZ = tileZ;
+            }
+            int localX = Math.floorMod(worldX, EXPLORATION_TILE_SIZE);
+            int localZ = Math.floorMod(worldZ, EXPLORATION_TILE_SIZE);
+            if (lastTile.isExplored(localX, localZ)) continue;
+            int color = sampleTerrainColor(level, worldX, worldZ);
+            if (color == 0) continue;
+            if (lastTile.setColor(localX, localZ, color, false)) {
+                data.dirtyTileKeys.add(tileKey(dimension, tileX, tileZ));
+                data.dirty = true;
             }
         }
-
-        if (changed) {
-            data.dirty = true;
-        }
+        if (data.explorationCursor >= total) data.explorationFinishedTick = player.tickCount;
     }
 
     public static void refreshExploration(LocalPlayer player, int radius) {
@@ -553,6 +621,7 @@ public final class MinimapWaypointClient {
                 int localX = Math.floorMod(worldX, EXPLORATION_TILE_SIZE);
                 int localZ = Math.floorMod(worldZ, EXPLORATION_TILE_SIZE);
                 int color = sampleTerrainColor(level, worldX, worldZ);
+                if (color == 0) continue;
 
                 if (tile.setColor(localX, localZ, color, true)) {
                     data.dirtyTileKeys.add(tileKey(dimension, tile.tileX(), tile.tileZ()));
@@ -577,6 +646,8 @@ public final class MinimapWaypointClient {
         NavigationStorageKey key = currentStorageKey(playerId);
         NavigationData existing = CACHE.remove(key);
 
+        if (existing != null) finishSave(key, existing);
+
         if (existing != null && existing.dirty) {
             save(key, existing);
         }
@@ -594,6 +665,7 @@ public final class MinimapWaypointClient {
 
             if (!entry.getKey().playerId().equals(playerId)) continue;
 
+            finishSave(entry.getKey(), entry.getValue());
             if (entry.getValue().dirty) {
                 save(entry.getKey(), entry.getValue());
             }
@@ -613,9 +685,14 @@ public final class MinimapWaypointClient {
     private static void saveIfDirty(NavigationStorageKey key) {
         NavigationData data = CACHE.get(key);
 
-        if (data == null || !data.dirty) return;
-
-        save(key, data);
+        if (data == null) return;
+        var pending = SAVES.get(key);
+        if (pending != null && !pending.isDone()) return;
+        finishSave(key, data);
+        if (!data.dirty) return;
+        NavigationData copy = snapshot(data);
+        data.dirty = false;
+        SAVES.put(key, java.util.concurrent.CompletableFuture.supplyAsync(() -> save(key, copy), SAVE_WORKER));
     }
 
     private static Waypoint findWaypoint(NavigationData data, String id) {
@@ -673,7 +750,48 @@ public final class MinimapWaypointClient {
         }
     }
 
-    private static int sampleTerrainColor(Level level, int worldX, int worldZ) {
+    private record TerrainSample(int color, long tick) {}
+    // Packed neighboring coordinates have poor Long.hashCode() distribution (x ^ z).
+    // The primitive map mixes the complete key and avoids collision trees and boxing.
+    private static final it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap<TerrainSample> TERRAIN_CACHE =
+            new it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap<>(8192);
+    private static Level terrainLevel;
+    private static final NavigationFrameBudget TERRAIN_BUDGET = new NavigationFrameBudget(256, 500_000L);
+
+    public static void beginNavigationFrame() {
+        TERRAIN_BUDGET.beginFrame();
+    }
+
+    public static boolean claimNavigationWork() {
+        return TERRAIN_BUDGET.claimWork();
+    }
+
+    /** Client-thread only. Zero means unavailable, and must not be recorded as explored. */
+    public static int sampleTerrainColor(Level level, int worldX, int worldZ) {
+        long tick = level.getGameTime();
+        if (terrainLevel != level) {
+            TERRAIN_CACHE.clear();
+            terrainLevel = level;
+        }
+        long key = ((long) worldX << 32) ^ (worldZ & 0xFFFFFFFFL);
+        TerrainSample cached = TERRAIN_CACHE.get(key);
+        if (cached != null && tick - cached.tick() < 20) return cached.color();
+        if (!level.hasChunk(worldX >> 4, worldZ >> 4)
+                || !level.hasChunk((worldX - 1) >> 4, worldZ >> 4)
+                || !level.hasChunk(worldX >> 4, (worldZ - 1) >> 4)) return 0;
+        if (!TERRAIN_BUDGET.claimSample(System.nanoTime())) return cached != null ? cached.color() : 0;
+        int color = computeTerrainColor(level, worldX, worldZ);
+        if (TERRAIN_CACHE.size() >= 32768) TERRAIN_CACHE.clear();
+        TERRAIN_CACHE.put(key, new TerrainSample(color, tick));
+        return color;
+    }
+
+    public static void clearTerrainCache() {
+        TERRAIN_CACHE.clear();
+        terrainLevel = null;
+    }
+
+    private static int computeTerrainColor(Level level, int worldX, int worldZ) {
         int surfaceY = level.getHeight(Heightmap.Types.WORLD_SURFACE, worldX, worldZ) - 1;
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(worldX, surfaceY, worldZ);
         BlockState state = level.getBlockState(pos);
@@ -843,6 +961,12 @@ public final class MinimapWaypointClient {
 
             NavigationData data = new NavigationData();
 
+            if (root.has("hiddenWaypointIds") && root.get("hiddenWaypointIds").isJsonArray()) {
+                for (JsonElement id : root.getAsJsonArray("hiddenWaypointIds")) {
+                    if (id.isJsonPrimitive() && id.getAsJsonPrimitive().isString()) data.hiddenWaypointIds.add(id.getAsString());
+                }
+            }
+
             if (root.has("activeWaypointId") && !root.get("activeWaypointId").isJsonNull()) {
                 data.activeWaypointId = root.get("activeWaypointId").getAsString();
             }
@@ -931,7 +1055,7 @@ public final class MinimapWaypointClient {
         }
     }
 
-    private static void save(NavigationStorageKey key, NavigationData data) {
+    private static boolean save(NavigationStorageKey key, NavigationData data) {
         Path file = fileFor(key);
 
         try {
@@ -940,6 +1064,9 @@ public final class MinimapWaypointClient {
             JsonObject root = new JsonObject();
             root.addProperty("worldId", key.worldId());
             root.addProperty("playerId", key.playerId().toString());
+            JsonArray hidden = new JsonArray();
+            for (String id : data.hiddenWaypointIds) hidden.add(id);
+            root.add("hiddenWaypointIds", hidden);
 
             if (data.activeWaypointId != null) {
                 root.addProperty("activeWaypointId", data.activeWaypointId);
@@ -998,12 +1125,21 @@ public final class MinimapWaypointClient {
 
             root.add("exploredTiles", exploredTiles);
 
-            try (Writer writer = Files.newBufferedWriter(file)) {
+            Path temporary = file.resolveSibling(file.getFileName() + ".tmp");
+            try (Writer writer = Files.newBufferedWriter(temporary)) {
                 GSON.toJson(root, writer);
             }
 
+            try {
+                Files.move(temporary, file, java.nio.file.StandardCopyOption.ATOMIC_MOVE, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            } catch (java.nio.file.AtomicMoveNotSupportedException unsupported) {
+                Files.move(temporary, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
             data.dirty = false;
-        } catch (Throwable ignored) {
+            return true;
+        } catch (Exception failure) {
+            CreateCybernetics.LOGGER.warn("Failed to save navigation map {}", file, failure);
+            return false;
         }
     }
 

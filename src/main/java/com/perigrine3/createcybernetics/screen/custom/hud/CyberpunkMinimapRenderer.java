@@ -7,6 +7,7 @@ import com.perigrine3.createcybernetics.api.InstalledCyberware;
 import com.perigrine3.createcybernetics.client.HudConfigClient;
 import com.perigrine3.createcybernetics.client.MinimapWaypointClient;
 import com.perigrine3.createcybernetics.client.navigation.SharedNavigationClientState;
+import com.perigrine3.createcybernetics.client.navigation.NavigationTerrainGrid;
 import com.perigrine3.createcybernetics.common.capabilities.ModAttachments;
 import com.perigrine3.createcybernetics.common.capabilities.PlayerCyberwareData;
 import com.perigrine3.createcybernetics.item.ModItems;
@@ -14,7 +15,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.core.BlockPos;
+import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
@@ -23,9 +25,6 @@ import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.saveddata.maps.MapDecoration;
 import net.minecraft.world.level.saveddata.maps.MapDecorationTypes;
 
@@ -43,7 +42,6 @@ public final class CyberpunkMinimapRenderer {
 
     private static final float BASE_RENDER_SCALE = 2.25f;
     private static final int BLOCKS_PER_PIXEL = 1;
-    private static final int CACHE_UPDATE_INTERVAL = 12;
     private static final int ENTITY_SCAN_RADIUS = MAP_SIZE * BLOCKS_PER_PIXEL / 2;
 
     private static final int BACKGROUND_COLOR = 0xE0020607;
@@ -58,12 +56,32 @@ public final class CyberpunkMinimapRenderer {
     private static final int TEXT_COLOR = 0xFF00E5FF;
     private static final int NORTH_COLOR = 0xFFFF5555;
 
-    private static final int[] TERRAIN_COLORS = new int[MAP_SIZE * MAP_SIZE];
-
+    private static NavigationTerrainGrid terrainGrid = new NavigationTerrainGrid(MAP_SIZE);
+    private static final DynamicTexture[] TERRAIN_TEXTURES = new DynamicTexture[3];
+    private static final ResourceLocation[] TERRAIN_LOCATIONS = new ResourceLocation[3];
+    private static int textureSlot = -1;
+    private static ResourceLocation terrainLocation;
     private static Level cachedLevel;
-    private static int cachedCenterX = Integer.MIN_VALUE;
-    private static int cachedCenterZ = Integer.MIN_VALUE;
-    private static int cachedTick = Integer.MIN_VALUE;
+    private static int lastRenderTick = Integer.MIN_VALUE;
+    private static java.util.List<Entity> cachedEntities = java.util.List.of();
+    private static int entityScanTick = Integer.MIN_VALUE;
+    private static boolean terrainUploadPending;
+
+    public static void clearTerrainCache() {
+        for (int slot = 0; slot < TERRAIN_TEXTURES.length; slot++) {
+            if (TERRAIN_LOCATIONS[slot] != null) Minecraft.getInstance().getTextureManager().release(TERRAIN_LOCATIONS[slot]);
+            TERRAIN_TEXTURES[slot] = null;
+            TERRAIN_LOCATIONS[slot] = null;
+        }
+        textureSlot = -1;
+        terrainLocation = null;
+        cachedLevel = null;
+        lastRenderTick = Integer.MIN_VALUE;
+        cachedEntities = java.util.List.of();
+        entityScanTick = Integer.MIN_VALUE;
+        terrainGrid = new NavigationTerrainGrid(MAP_SIZE);
+        terrainUploadPending = true;
+    }
 
     public static boolean hasNavigationChip(LocalPlayer player) {
         PlayerCyberwareData data = player.getData(ModAttachments.CYBERWARE);
@@ -103,7 +121,7 @@ public final class CyberpunkMinimapRenderer {
         if (!layout.enabled) return;
         if (!hasNavigationChip(player)) return;
 
-        updateTerrainCache(player);
+        uploadTerrainIfNeeded();
 
         CyberwareHudLayer.HudRect rect = computeRect(layout, screenPxW, screenPxH);
         float renderScale = effectiveScale(layout);
@@ -131,75 +149,49 @@ public final class CyberpunkMinimapRenderer {
         return BASE_RENDER_SCALE * layout.scale;
     }
 
-    private static void updateTerrainCache(LocalPlayer player) {
+    /** Client tick only: the HUD draw path must never query world terrain. */
+    public static void updateTerrain(LocalPlayer player) {
         Level level = player.level();
-        int centerX = Mth.floor(player.getX());
-        int centerZ = Mth.floor(player.getZ());
+        if (cachedLevel != level) {
+            terrainGrid = new NavigationTerrainGrid(MAP_SIZE);
+            lastRenderTick = Integer.MIN_VALUE;
+            cachedEntities = java.util.List.of();
+            entityScanTick = Integer.MIN_VALUE;
+            cachedLevel = level;
+            terrainUploadPending = true;
+        }
+        if (lastRenderTick == player.tickCount) return;
+        lastRenderTick = player.tickCount;
+        terrainGrid.moveTo(Mth.floor(player.getX()), Mth.floor(player.getZ()));
+        terrainGrid.update((x, z) -> MinimapWaypointClient.sampleTerrainColor(level, x, z), 256);
+        terrainUploadPending |= terrainGrid.consumeChanged();
+    }
 
-        boolean levelChanged = cachedLevel != level;
-        boolean movedEnough = Math.abs(centerX - cachedCenterX) >= BLOCKS_PER_PIXEL || Math.abs(centerZ - cachedCenterZ) >= BLOCKS_PER_PIXEL;
-        boolean intervalElapsed = cachedTick == Integer.MIN_VALUE || player.tickCount - cachedTick >= CACHE_UPDATE_INTERVAL;
-
-        if (!levelChanged && !movedEnough && !intervalElapsed) return;
-
-        cachedLevel = level;
-        cachedCenterX = centerX;
-        cachedCenterZ = centerZ;
-        cachedTick = player.tickCount;
-
-        int halfSize = MAP_SIZE / 2;
-
-        for (int mapZ = 0; mapZ < MAP_SIZE; mapZ++) {
-            for (int mapX = 0; mapX < MAP_SIZE; mapX++) {
-                int worldX = centerX + (mapX - halfSize) * BLOCKS_PER_PIXEL;
-                int worldZ = centerZ + (mapZ - halfSize) * BLOCKS_PER_PIXEL;
-                TERRAIN_COLORS[mapZ * MAP_SIZE + mapX] = sampleTerrainColor(level, worldX, worldZ);
+    private static void uploadTerrainIfNeeded() {
+        if (!terrainUploadPending) return;
+        // Do not overwrite the same texture the GPU used for the preceding frame.
+        // Three tiny textures keep updates bounded without accumulating resources.
+        int nextSlot = (textureSlot + 1) % TERRAIN_TEXTURES.length;
+        DynamicTexture terrainTexture = TERRAIN_TEXTURES[nextSlot];
+        if (terrainTexture == null) {
+            terrainTexture = new DynamicTexture(MAP_SIZE, MAP_SIZE, true);
+            TERRAIN_TEXTURES[nextSlot] = terrainTexture;
+            TERRAIN_LOCATIONS[nextSlot] = Minecraft.getInstance().getTextureManager().register("navigation_minimap", terrainTexture);
+            terrainTexture.setFilter(false, false);
+        }
+        var pixels = terrainTexture.getPixels();
+        if (pixels == null) return;
+        for (int z = 0; z < MAP_SIZE; z++) {
+            for (int x = 0; x < MAP_SIZE; x++) {
+                int color = terrainGrid.color(x, z);
+                if (color == 0) color = MAP_BACKGROUND_COLOR;
+                pixels.setPixelRGBA(x, z, (color & 0xFF00FF00) | ((color >> 16) & 0xFF) | ((color & 0xFF) << 16));
             }
         }
-    }
-
-    private static int sampleTerrainColor(Level level, int worldX, int worldZ) {
-        int surfaceY = level.getHeight(Heightmap.Types.WORLD_SURFACE, worldX, worldZ) - 1;
-        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(worldX, surfaceY, worldZ);
-        BlockState state = level.getBlockState(pos);
-        FluidState fluidState = state.getFluidState();
-
-        while (surfaceY > level.getMinBuildHeight() && state.isAir()) {
-            surfaceY--;
-            pos.set(worldX, surfaceY, worldZ);
-            state = level.getBlockState(pos);
-            fluidState = state.getFluidState();
-        }
-
-        int rgb = state.getMapColor(level, pos).col;
-
-        if (!fluidState.isEmpty()) {
-            rgb = fluidState.createLegacyBlock().getMapColor(level, pos).col;
-        }
-
-        int brightness = terrainBrightness(level, worldX, surfaceY, worldZ);
-        int red = Mth.clamp(((rgb >> 16) & 0xFF) * brightness / 255, 0, 255);
-        int green = Mth.clamp(((rgb >> 8) & 0xFF) * brightness / 255, 0, 255);
-        int blue = Mth.clamp((rgb & 0xFF) * brightness / 255, 0, 255);
-
-        return 0xFF000000 | red << 16 | green << 8 | blue;
-    }
-
-    private static int terrainBrightness(Level level, int worldX, int surfaceY, int worldZ) {
-        int northHeight = level.getHeight(Heightmap.Types.WORLD_SURFACE, worldX, worldZ - BLOCKS_PER_PIXEL) - 1;
-        int westHeight = level.getHeight(Heightmap.Types.WORLD_SURFACE, worldX - BLOCKS_PER_PIXEL, worldZ) - 1;
-        int northDifference = surfaceY - northHeight;
-        int westDifference = surfaceY - westHeight;
-        int difference = northDifference + westDifference;
-
-        if (difference >= 4) return 310;
-        if (difference >= 2) return 285;
-        if (difference >= 1) return 270;
-        if (difference <= -4) return 160;
-        if (difference <= -2) return 185;
-        if (difference <= -1) return 210;
-
-        return 240;
+        terrainTexture.upload();
+        textureSlot = nextSlot;
+        terrainLocation = TERRAIN_LOCATIONS[nextSlot];
+        terrainUploadPending = false;
     }
 
     private static void renderBackground(GuiGraphics gg) {
@@ -220,12 +212,7 @@ public final class CyberpunkMinimapRenderer {
         int startX = FRAME_PADDING;
         int startY = FRAME_PADDING + HEADER_HEIGHT;
 
-        for (int mapZ = 0; mapZ < MAP_SIZE; mapZ++) {
-            for (int mapX = 0; mapX < MAP_SIZE; mapX++) {
-                int color = TERRAIN_COLORS[mapZ * MAP_SIZE + mapX];
-                gg.fill(startX + mapX, startY + mapZ, startX + mapX + 1, startY + mapZ + 1, color);
-            }
-        }
+        if (terrainLocation != null) gg.blit(terrainLocation, startX, startY, 0, 0, MAP_SIZE, MAP_SIZE, MAP_SIZE, MAP_SIZE);
     }
 
     private static void renderGrid(GuiGraphics gg) {
@@ -345,7 +332,11 @@ public final class CyberpunkMinimapRenderer {
         int centerX = FRAME_PADDING + MAP_SIZE / 2;
         int centerY = FRAME_PADDING + HEADER_HEIGHT + MAP_SIZE / 2;
 
-        for (Entity entity : player.level().getEntities(player, player.getBoundingBox().inflate(ENTITY_SCAN_RADIUS))) {
+        if (entityScanTick == Integer.MIN_VALUE || player.tickCount - entityScanTick >= 5) {
+            cachedEntities = player.level().getEntities(player, player.getBoundingBox().inflate(ENTITY_SCAN_RADIUS));
+            entityScanTick = player.tickCount;
+        }
+        for (Entity entity : cachedEntities) {
             if (!(entity instanceof LivingEntity living)) continue;
             if (!living.isAlive()) continue;
             if (living.isInvisible()) continue;

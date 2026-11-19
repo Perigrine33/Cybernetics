@@ -881,6 +881,7 @@ public class MantisBladeItem extends Item implements ICyberwareItem {
                         ? AttachmentAnchor.LEFT_ARM
                         : AttachmentAnchor.RIGHT_ARM;
 
+                // Keep the normal first-person blade placement during Heavy Knuckles falls/slams.
                 applyFirstPersonMantisBladeTransform(pose, anchor);
 
                 var vertexConsumer = buffers.getBuffer(model.renderType(texture));

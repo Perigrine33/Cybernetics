@@ -5,7 +5,7 @@
       "type": "neoforge:compound",
       "ingredients": [
         {
-          "item": "createcybernetics:muscleupgrades_scavenged_reinforcedtendons"
+          "item": "createcybernetics:scavenged_reinforcedtendons"
         }
       ]
     }

@@ -17,6 +17,10 @@ public final class PlayerImpactSquishClientState {
 
     private PlayerImpactSquishClientState() {}
 
+    public static void clear() {
+        ACTIVE.clear();
+    }
+
     public static void trigger(Entity entity, float strength) {
         if (entity == null) return;
 

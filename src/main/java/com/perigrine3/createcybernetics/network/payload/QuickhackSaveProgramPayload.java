@@ -1,6 +1,7 @@
 package com.perigrine3.createcybernetics.network.payload;
 
 import com.perigrine3.createcybernetics.CreateCybernetics;
+import com.perigrine3.createcybernetics.common.quickhack.QuickhackProgramData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -17,7 +18,7 @@ public record QuickhackSaveProgramPayload(BlockPos computerPos, int towerSlot, S
             (buffer, payload) -> {
                 buffer.writeBlockPos(payload.computerPos());
                 buffer.writeVarInt(payload.towerSlot());
-                buffer.writeUtf(payload.name(), 32);
+                buffer.writeUtf(payload.name(), QuickhackProgramData.MAX_NAME_LENGTH);
                 buffer.writeVarInt(payload.nodeIds().size());
 
                 for (String nodeId : payload.nodeIds()) {
@@ -27,7 +28,7 @@ public record QuickhackSaveProgramPayload(BlockPos computerPos, int towerSlot, S
             buffer -> {
                 BlockPos computerPos = buffer.readBlockPos();
                 int towerSlot = buffer.readVarInt();
-                String name = buffer.readUtf(32);
+                String name = buffer.readUtf(QuickhackProgramData.MAX_NAME_LENGTH);
                 int nodeCount = Math.max(0, Math.min(10, buffer.readVarInt()));
                 List<String> nodeIds = new ArrayList<>();
 

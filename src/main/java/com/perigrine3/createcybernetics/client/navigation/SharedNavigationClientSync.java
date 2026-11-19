@@ -43,9 +43,7 @@ public final class SharedNavigationClientSync {
             clearQueues();
             queuedNetworkId = networkId;
 
-            TILE_QUEUE.addAll(MinimapWaypointClient.createTileSnapshot(player));
-            WAYPOINT_QUEUE.addAll(MinimapWaypointClient.createWaypointSnapshot(player));
-            MinimapWaypointClient.markAllSharedSyncClean(player);
+            MinimapWaypointClient.markAllSharedSyncDirty(player);
         }
 
         if (TILE_QUEUE.isEmpty()) {
@@ -56,6 +54,14 @@ public final class SharedNavigationClientSync {
             WAYPOINT_QUEUE.addAll(MinimapWaypointClient.drainDirtyWaypointSnapshots(player, DIRTY_BATCH_SIZE));
         }
 
+        if (player.tickCount % 5 != 0) return;
+
+        // Waypoints should not wait behind a large exploration history.
+        if (!WAYPOINT_QUEUE.isEmpty() && (TILE_QUEUE.isEmpty() || player.tickCount % 20 == 0)) {
+            var waypoint = WAYPOINT_QUEUE.poll();
+            PacketDistributor.sendToServer(new SharedNavigationWaypointUploadPayload(networkId, waypoint.id(), waypoint.dimension(), waypoint.x(), waypoint.y(), waypoint.z(), waypoint.name(), waypoint.color(), waypoint.type()));
+            return;
+        }
         MinimapWaypointClient.NavigationTileSnapshot tile = TILE_QUEUE.poll();
 
         if (tile != null) {

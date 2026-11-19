@@ -1,15 +1,19 @@
+
 package com.perigrine3.createcybernetics.client.render;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import com.perigrine3.createcybernetics.CreateCybernetics;
+import com.perigrine3.createcybernetics.api.CyberwareSlot;
 import com.perigrine3.createcybernetics.api.client.ISandevistanSkinOverlayProvider;
 import com.perigrine3.createcybernetics.api.client.SandevistanSkinOverlayApi;
 import com.perigrine3.createcybernetics.client.skin.SkinHighlight;
 import com.perigrine3.createcybernetics.client.skin.SkinModifier;
 import com.perigrine3.createcybernetics.client.skin.SkinModifierManager;
 import com.perigrine3.createcybernetics.client.skin.SkinModifierState;
+import com.perigrine3.createcybernetics.common.capabilities.PlayerCyberwareData;
 import com.perigrine3.createcybernetics.effect.ModEffects;
+import com.perigrine3.createcybernetics.item.ModItems;
 import com.perigrine3.createcybernetics.network.payload.SandevistanSnapshotC2SPayload;
 import com.perigrine3.createcybernetics.network.payload.SandevistanSnapshotPayload;
 import net.minecraft.client.CameraType;
@@ -420,6 +424,15 @@ public final class SandevistanMirageTrail {
             scaleAttr = Mth.clamp(scaleAttr, 0.0625F, 16.0F);
             float mirageScale = MIRAGE_MODEL_SCALE * scaleAttr;
 
+            PlayerCyberwareData data = PlayerCyberwareData.getForVisual(player, player.registryAccess());
+            boolean primaryDyed = data != null
+                    && data.hasSpecificItem(ModItems.BONEUPGRADES_SANDEVISTAN.get(), CyberwareSlot.BONE)
+                    && data.isDyed(ModItems.BONEUPGRADES_SANDEVISTAN.get(), CyberwareSlot.BONE);
+
+            int primaryDyeColor = primaryDyed
+                    ? data.dyeColor(ModItems.BONEUPGRADES_SANDEVISTAN.get(), CyberwareSlot.BONE)
+                    : 0xFFFFFFFF;
+
             for (int i = start; i < endExclusive; i++) {
                 Snapshot s = arr[i];
 
@@ -430,14 +443,21 @@ public final class SandevistanMirageTrail {
                 float alpha = 1.0F - t;
                 alpha *= alpha;
 
-                int aBody = (int) (alpha * (float) MAX_BODY_ALPHA);
+                int aBody = (int) (alpha * (float) (primaryDyed ? 200 : MAX_BODY_ALPHA));
                 if (aBody <= 0) continue;
 
-                float indexNorm = (i - start) / (float) Math.max(1, (renderCount - 1));
-                float baseHue = ((player.tickCount + partial) * 0.01F) % 1.0F;
-                float hue = (baseHue + indexNorm) % 1.0F;
+                int rgb;
 
-                int rgb = Mth.hsvToRgb(hue, 0.90F, 1.0F);
+                if (primaryDyed) {
+                    rgb = primaryDyeColor & 0x00FFFFFF;
+                } else {
+                    float indexNorm = (i - start) / (float) Math.max(1, (renderCount - 1));
+                    float baseHue = ((player.tickCount + partial) * 0.01F) % 1.0F;
+                    float hue = (baseHue + indexNorm) % 1.0F;
+
+                    rgb = Mth.hsvToRgb(hue, 0.90F, 1.0F);
+                }
+
                 int hueR = (rgb >> 16) & 0xFF;
                 int hueG = (rgb >> 8) & 0xFF;
                 int hueB = rgb & 0xFF;
@@ -469,7 +489,7 @@ public final class SandevistanMirageTrail {
                     poseStack.scale(mirageScale, mirageScale, mirageScale);
                     poseStack.translate(0.0F, -1.501F / mirageScale, 0.0F);
 
-                    int packedLight = LevelRenderer.getLightColor(
+                    int packedLight = primaryDyed ? FULL_BRIGHT : LevelRenderer.getLightColor(
                             player.level(),
                             BlockPos.containing(renderPos.x, renderPos.y, renderPos.z)
                     );

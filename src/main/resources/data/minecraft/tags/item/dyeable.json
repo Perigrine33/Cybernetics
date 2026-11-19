@@ -26,7 +26,6 @@
     "createcybernetics:data_shard_game_minesweeper",
     "createcybernetics:data_shard_game_chess",
 
-    "createcybernetics:eyeupgrades_monovision",
     "createcybernetics:eyeupgrades_multioptics1",
     "createcybernetics:eyeupgrades_multioptics2",
     "createcybernetics:eyeupgrades_multioptics3",
@@ -34,6 +33,7 @@
 
     "createcybernetics:skinupgrades_metalplating",
     "createcybernetics:legupgrades_ocelotpaws",
-    "createcybernetics:armupgrades_arccannon"
+    "createcybernetics:armupgrades_arccannon",
+    "createcybernetics:brainupgrades_coaxialport"
   ]
 }

@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "createcybernetics:item/boneupgrades_sandevistan",
+    "layer1": "createcybernetics:item/boneupgrades_sandevistan_mask",
+    "layer2": "createcybernetics:item/boneupgrades_sandevistan_mask2"
+  }
+}

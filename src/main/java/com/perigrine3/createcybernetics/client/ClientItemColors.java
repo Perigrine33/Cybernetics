@@ -70,6 +70,9 @@ public final class ClientItemColors {
                 ModItems.SKINUPGRADES_METALPLATING.get(),
                 ModItems.LEGUPGRADES_OCELOTPAWS.get(),
                 ModItems.ARMUPGRADES_ARCCANNON.get(),
+                ModItems.BONEUPGRADES_SANDEVISTAN.get(),
+                ModItems.BRAINUPGRADES_COAXIALPORT.get(),
+                ModItems.BRAINUPGRADES_CYBERDECK.get(),
 
                         ModItems.DATA_SHARD_INFOLOG_SUNSET_SHIFT.get(),
                         ModItems.DATA_SHARD_INFOLOG_HOUSE_RULES.get(),
